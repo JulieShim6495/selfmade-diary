@@ -295,20 +295,38 @@ function BlockHeader({
   );
 }
 
-function HalfHourScheduleRows() {
+function HalfHourScheduleRows({ startTime }: { startTime: string }) {
   const rows = useMemo(() => {
+    const [hourText, minuteText] = startTime.split(":");
+    let hour = Number(hourText);
+    let minute = Number(minuteText);
+
+    if (Number.isNaN(hour)) hour = 8;
+    if (Number.isNaN(minute)) minute = 0;
+
     const result: string[] = [];
-    for (let hour = 8; hour <= 22; hour++) {
-      result.push(`${String(hour).padStart(2, "0")}:00`);
-      if (hour !== 22) result.push(`${String(hour).padStart(2, "0")}:30`);
+
+    for (let i = 0; i < 24; i++) {
+      result.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+
+      minute += 30;
+      if (minute >= 60) {
+        minute = 0;
+        hour += 1;
+      }
     }
+
     return result;
-  }, []);
+  }, [startTime]);
 
   return (
     <div className="max-h-[calc(100%-44px)] overflow-hidden">
       {rows.map((time) => (
-        <div key={time} className="grid grid-cols-[56px_1fr] border-t py-1.5 text-xs" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+        <div
+          key={time}
+          className="grid grid-cols-[56px_1fr] border-t py-1.5 text-xs"
+          style={{ borderColor: "rgba(0,0,0,0.08)" }}
+        >
           <span className="text-neutral-400">{time}</span>
           <span className="text-neutral-300">작성</span>
         </div>
@@ -321,12 +339,14 @@ function PreviewBlock({
   id,
   label,
   theme,
-  onSizeChange,
+  timetableStart,
+   onSizeChange,
 }: {
   id: BlockId;
   label: string;
   layout: BlockLayout;
   theme: typeof themes[ThemeKey];
+  timetableStart: string;
   onSizeChange: (id: BlockId, key: "width" | "height", amount: number) => void;
 }) {
   const baseStyle = {
@@ -352,7 +372,7 @@ function PreviewBlock({
     return (
       <div className={baseClass} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        <HalfHourScheduleRows />
+       <HalfHourScheduleRows startTime={timetableStart} />
       </div>
     );
   }
@@ -416,7 +436,7 @@ export default function DiaryMakerSite() {
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedBlocks, setSelectedBlocks] = useState<BlockId[]>(["goal", "todo", "schedule", "memo"]);
   const [blockLayouts, setBlockLayouts] = useState<Record<BlockId, BlockLayout>>(defaultLayouts);
-
+const [timetableStart, setTimetableStart] = useState("08:00");
   const theme = themes[selectedTheme];
 
   useEffect(() => {
@@ -425,6 +445,7 @@ export default function DiaryMakerSite() {
 
     try {
       const parsed = JSON.parse(saved);
+      if (parsed.timetableStart) setTimetableStart(parsed.timetableStart);
       if (parsed.plannerType) setPlannerType(parsed.plannerType);
       if (parsed.pageSize) setPageSize(parsed.pageSize);
       if (parsed.style) setStyle(parsed.style);
@@ -479,7 +500,51 @@ export default function DiaryMakerSite() {
     setSelectedBlocks(template.blocks);
     autoArrange(template.blocks);
   };
+const preventOverlap = (id: BlockId, x: number, y: number) => {
+  const gridSize = 30;
 
+  const current = blockLayouts[id];
+
+  if (!current) return { x, y };
+
+  let nextX = Math.max(0, x);
+  let nextY = Math.max(0, y);
+
+  let moved = true;
+  let count = 0;
+
+  while (moved && count < 10) {
+    moved = false;
+
+    selectedBlocks.forEach((otherId) => {
+      if (otherId === id) return;
+
+      const other = blockLayouts[otherId];
+
+      if (!other) return;
+
+      const isOverlapping =
+        nextX < other.x + other.width &&
+        nextX + current.width > other.x &&
+        nextY < other.y + other.height &&
+        nextY + current.height > other.y;
+
+      if (isOverlapping) {
+        nextY =
+          Math.round(
+            (other.y + other.height + gridSize) /
+              gridSize
+          ) * gridSize;
+
+        moved = true;
+      }
+    });
+
+    count += 1;
+  }
+
+  return { x: nextX, y: nextY };
+};
   const updateBlockPosition = (id: BlockId, x: number, y: number) => {
     setBlockLayouts((prev) => ({ ...prev, [id]: { ...prev[id], x, y } }));
   };
@@ -502,7 +567,7 @@ export default function DiaryMakerSite() {
   const savePlanner = () => {
     window.localStorage.setItem(
       "diary-lab-save",
-      JSON.stringify({ plannerType, pageSize, style, selectedTheme, printMargin, selectedCategory, selectedTemplate, selectedBlocks, blockLayouts })
+      JSON.stringify({ plannerType, pageSize, style, selectedTheme, timetableStart, printMargin, selectedCategory, selectedTemplate, selectedBlocks, blockLayouts })
     );
     setSaveMessage("저장 완료! 다음에 열어도 이 배치를 불러옵니다.");
     setTimeout(() => setSaveMessage(""), 2500);
@@ -513,6 +578,14 @@ export default function DiaryMakerSite() {
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
       <style>{`
+      @page {
+  margin: 5mm;
+}
+
+#print-area {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
         @media print {
           body * { visibility: hidden; }
           #print-area, #print-area * { visibility: visible; }
@@ -569,6 +642,23 @@ export default function DiaryMakerSite() {
             <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Printer className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">인쇄 여백</h3><p className="mt-2 leading-7 text-neutral-600">좁게, 보통, 넓게 중 선택할 수 있습니다.</p></CardContent></Card>
           </div>
         </section>
+        <section>
+  <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
+    <CalendarDays className="h-5 w-5" /> 시간표 시작 시간
+  </h3>
+
+  <input
+    type="time"
+    step="1800"
+    value={timetableStart}
+    onChange={(e) => setTimetableStart(e.target.value)}
+    className="w-full rounded-2xl border bg-white px-4 py-3 text-sm"
+  />
+
+  <p className="mt-2 text-xs text-neutral-500">
+    30분 단위로 시간표가 자동 생성됩니다.
+  </p>
+</section>
 
         <section id="maker" className="mx-auto max-w-7xl px-6 py-16">
           <div className="mb-8 text-center">
@@ -693,11 +783,33 @@ export default function DiaryMakerSite() {
                             dragElastic={0}
                             initial={false}
                             animate={{ x: layout.x, y: layout.y }}
-                            onDragEnd={(_, info) => updateBlockPosition(block.id, layout.x + info.offset.x, layout.y + info.offset.y)}
+                            onDragEnd={(_, info) => {
+  const gridSize = 30;
+
+  let nextX =
+    Math.round((layout.x + info.offset.x) / gridSize) *
+    gridSize;
+
+  let nextY =
+    Math.round((layout.y + info.offset.y) / gridSize) *
+    gridSize;
+
+  const safePosition = preventOverlap(
+    block.id,
+    nextX,
+    nextY
+  );
+
+  updateBlockPosition(
+    block.id,
+    safePosition.x,
+    safePosition.y
+  );
+}}
                             className="absolute cursor-grab active:cursor-grabbing"
                             style={{ width: layout.width, height: layout.height }}
                           >
-                            <PreviewBlock id={block.id} label={block.label} layout={layout} theme={theme} onSizeChange={changeBlockSize} />
+                            <PreviewBlock id={block.id} label={block.label} layout={layout} theme={theme} timetableStart={timetableStart} onSizeChange={changeBlockSize} />
                           </motion.div>
                         );
                       })}
