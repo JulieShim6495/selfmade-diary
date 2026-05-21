@@ -88,7 +88,6 @@ const blockOptions: { id: BlockId; label: string }[] = [
 const blockLabelMap = Object.fromEntries(
   blockOptions.map((block) => [block.id, block.label])
 ) as Record<BlockId, string>;
-
 const typeOptions = ["데일리", "위클리", "먼슬리"];
 const sizeOptions = ["A4", "A5", "B6", "아이패드용"];
 const styleOptions = ["미니멀", "감성", "업무용", "귀여운"];
@@ -445,6 +444,16 @@ export default function DiaryMakerSite() {
     [selectedBlocks]
   );
 
+  const sortedBlockOptions = useMemo(() => {
+    const selected = selectedBlocks
+      .map((id) => blockOptions.find((block) => block.id === id))
+      .filter((block): block is { id: BlockId; label: string } => Boolean(block));
+
+    const unselected = blockOptions.filter((block) => !selectedBlocks.includes(block.id));
+
+    return [...selected, ...unselected];
+  }, [selectedBlocks]);
+
   const autoArrange = (targetBlocks = selectedBlocks) => {
     setBlockLayouts((prev) => {
       const next = { ...prev };
@@ -458,7 +467,7 @@ export default function DiaryMakerSite() {
 
   const toggleBlock = (id: BlockId) => {
     setSelectedBlocks((prev) => {
-      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [id, ...prev];
       setTimeout(() => autoArrange(next), 0);
       return next;
     });
@@ -635,7 +644,7 @@ export default function DiaryMakerSite() {
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CheckSquare className="h-5 w-5" /> 넣을 항목</h3>
                   <div className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
-                    {blockOptions.map((block) => (
+                    {sortedBlockOptions.map((block) => (
                       <label key={block.id} className="flex cursor-pointer items-center justify-between rounded-2xl border bg-white px-4 py-3">
                         <span>{block.label}</span>
                         <input type="checkbox" checked={selectedBlocks.includes(block.id)} onChange={() => toggleBlock(block.id)} className="h-5 w-5 accent-neutral-900" />
@@ -662,40 +671,18 @@ export default function DiaryMakerSite() {
             <Card className="rounded-3xl border-0 bg-white shadow-sm">
               <CardContent className="p-4 md:p-8">
                 <div id="print-area" className="mx-auto min-h-[1180px] max-w-[760px] rounded-3xl shadow-inner print:shadow-none" style={{ backgroundColor: theme.page, padding: marginOptions[printMargin].padding }}>
-<div className="mb-3 flex items-start justify-between border-b pb-2" style={{ borderColor: theme.line }}>
-  <div className="no-print">
-    <h2 className="mt-1 text-3xl font-black" style={{ color: theme.accent }}>
-      {plannerType} 플래너
-    </h2>
-    <p className="mt-1 text-sm text-neutral-400">
-      {pageSize} · {style} · {themes[selectedTheme].label}
-    </p>
-  </div>
+                  <div className="mb-8 flex items-start justify-between border-b pb-5" style={{ borderColor: theme.line }}>
+                    <div><h2 className="mt-1 text-3xl font-black" style={{ color: theme.accent }}>{plannerType} 플래너</h2><p className="mt-1 text-sm text-neutral-400">{pageSize} · {style} · {themes[selectedTheme].label}</p></div>
+                    <div className="rounded-2xl border px-4 py-3 text-center" style={{ borderColor: theme.line, backgroundColor: theme.block }}><div className="text-xs text-neutral-400">DATE</div><div className="mt-1 text-sm">____ . ____ . ____</div></div>
+                  </div>
 
-  <div
-    className="rounded-xl border px-3 py-2 text-center"
-    style={{ borderColor: theme.line, backgroundColor: theme.block }}
-  >
-    <div className="text-[10px] text-neutral-400">DATE</div>
-    <div className="mt-1 text-[11px]">____ . ____ . ____</div>
-  </div>
-</div>
                   {plannerType === "먼슬리" ? (
                     <div className="mb-5 grid grid-cols-7 gap-1 text-center text-xs">
                       {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => <div key={day} className="py-2 font-bold" style={{ color: theme.accent }}>{day}</div>)}
                       {Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-20 rounded-lg border p-1 text-left text-neutral-300" style={{ borderColor: theme.line, backgroundColor: theme.block }}>{i + 1}</div>)}
                     </div>
                   ) : (
-                    <div
-  className="relative min-h-[980px] rounded-2xl border border-dashed"
-  style={{
-    borderColor: theme.line,
-    backgroundColor: theme.page,
-    backgroundImage:
-      "linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px)",
-    backgroundSize: "30px 30px",
-  }}
->
+                    <div className="relative min-h-[980px] rounded-2xl border border-dashed" style={{ borderColor: theme.line, backgroundColor: theme.page }}>
                       {blocks.map((block) => {
                         const layout = blockLayouts[block.id];
                         return (
@@ -706,55 +693,7 @@ export default function DiaryMakerSite() {
                             dragElastic={0}
                             initial={false}
                             animate={{ x: layout.x, y: layout.y }}
-onDragEnd={(_, info) => {
-  const gridSize = 30;
-
-  let nextX =
-    Math.round((layout.x + info.offset.x) / gridSize) *
-    gridSize;
-
-  let nextY =
-    Math.round((layout.y + info.offset.y) / gridSize) *
-    gridSize;
-
-  const SNAP_DISTANCE = 40;
-
-  selectedBlocks.forEach((otherId) => {
-    if (otherId === block.id) return;
-
-    const other = blockLayouts[otherId];
-
-    if (!other) return;
-
-    // X축 스냅
-    if (Math.abs(nextX - other.x) < SNAP_DISTANCE) {
-      nextX = other.x;
-    }
-
-    // Y축 스냅
-    if (Math.abs(nextY - other.y) < SNAP_DISTANCE) {
-      nextY = other.y;
-    }
-
-    // 오른쪽 정렬
-    if (
-      Math.abs(nextX - (other.x + other.width + 30)) <
-      SNAP_DISTANCE
-    ) {
-      nextX = other.x + other.width + 30;
-    }
-
-    // 아래 정렬
-    if (
-      Math.abs(nextY - (other.y + other.height + 30)) <
-      SNAP_DISTANCE
-    ) {
-      nextY = other.y + other.height + 30;
-    }
-  });
-
-  updateBlockPosition(block.id, nextX, nextY);
-}}
+                            onDragEnd={(_, info) => updateBlockPosition(block.id, layout.x + info.offset.x, layout.y + info.offset.y)}
                             className="absolute cursor-grab active:cursor-grabbing"
                             style={{ width: layout.width, height: layout.height }}
                           >
@@ -765,7 +704,7 @@ onDragEnd={(_, info) => {
                     </div>
                   )}
 
-                  <div id="print" className="no-print mt-8 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400" style={{ borderColor: theme.line, backgroundColor: theme.block }}>
+                  <div id="print" className="mt-8 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400" style={{ borderColor: theme.line, backgroundColor: theme.block }}>
                     인쇄 버튼을 누른 뒤 프린터 대상에서 “PDF로 저장”을 선택하세요.
                   </div>
                 </div>
