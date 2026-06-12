@@ -91,6 +91,12 @@ const blockLabelMap = Object.fromEntries(
 const typeOptions = ["데일리", "위클리", "먼슬리"];
 const sizeOptions = ["A4", "A5", "B6", "아이패드용"];
 const styleOptions = ["미니멀", "감성", "업무용", "귀여운"];
+const pageSizeMap = {
+  A4: { width: 760, height: 1075, label: "A4" },
+  A5: { width: 540, height: 760, label: "A5" },
+  B6: { width: 430, height: 610, label: "B6" },
+  아이패드용: { width: 820, height: 1180, label: "iPad" },
+};
 
 const themes: Record<ThemeKey, { label: string; page: string; block: string; accent: string; soft: string; line: string }> = {
   minimal: {
@@ -295,52 +301,110 @@ function BlockHeader({
   );
 }
 
-function HalfHourScheduleRows({ startTime }: { startTime: string }) {
-  const rows = useMemo(() => {
-    const [hourText, minuteText] = startTime.split(":");
-    let hour = Number(hourText);
-    let minute = Number(minuteText);
+function HalfHourScheduleRows({
+  startTime,
+  layout,
+}: {
+  startTime: string;
+  layout: BlockLayout;
+}) {
+  const rows = [];
+const visibleRowCount = Math.max(4, Math.floor((layout.height - 55) / 24));
+  const [hourText, minuteText] =
+    startTime.split(":");
 
-    if (Number.isNaN(hour)) hour = 8;
-    if (Number.isNaN(minute)) minute = 0;
+  let hour = Number(hourText);
+  let minute = Number(minuteText);
 
-    const result: string[] = [];
+  for (let i = 0; i < 24; i++) {
+    rows.push(
+      `${String(hour).padStart(2, "0")}:${String(
+        minute
+      ).padStart(2, "0")}`
+    );
 
-    for (let i = 0; i < 24; i++) {
-      result.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+    minute += 30;
 
-      minute += 30;
-      if (minute >= 60) {
-        minute = 0;
-        hour += 1;
-      }
+    if (minute >= 60) {
+      minute = 0;
+      hour += 1;
     }
-
-    return result;
-  }, [startTime]);
+    if (hour >= 24) {
+  hour = 0;
+}
+  }
 
   return (
     <div className="max-h-[calc(100%-44px)] overflow-hidden">
-      {rows.map((time) => (
+      {rows.slice(0, visibleRowCount).map((time) => (
         <div
           key={time}
           className="grid grid-cols-[56px_1fr] border-t py-1.5 text-xs"
-          style={{ borderColor: "rgba(0,0,0,0.08)" }}
+          style={{
+            borderColor: "rgba(0,0,0,0.08)",
+          }}
         >
-          <span className="text-neutral-400">{time}</span>
-          <span className="text-neutral-300">작성</span>
+          <span className="text-neutral-400">
+            {time}
+          </span>
+
         </div>
       ))}
     </div>
   );
 }
+function ResizeHandle({
+  id,
+  layout,
+  theme,
+  onResize,
+}: {
+  id: BlockId;
+  layout: BlockLayout;
+  theme: typeof themes[ThemeKey];
+  onResize: (id: BlockId, width: number, height: number) => void;
+}) {
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
 
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = layout.width;
+    const startHeight = layout.height;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const nextWidth = startWidth + (moveEvent.clientX - startX);
+      const nextHeight = startHeight + (moveEvent.clientY - startY);
+
+      onResize(id, nextWidth, nextHeight);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className="no-print absolute bottom-2 right-2 h-4 w-4 cursor-se-resize rounded-full"
+      style={{ backgroundColor: theme.accent }}
+    />
+  );
+}
 function PreviewBlock({
   id,
   label,
+  layout,
   theme,
   timetableStart,
-   onSizeChange,
+  onSizeChange,
+  onResize,
 }: {
   id: BlockId;
   label: string;
@@ -348,43 +412,74 @@ function PreviewBlock({
   theme: typeof themes[ThemeKey];
   timetableStart: string;
   onSizeChange: (id: BlockId, key: "width" | "height", amount: number) => void;
-}) {
+  onResize: (id: BlockId, width: number, height: number) => void;
+}): import("react/jsx-runtime").JSX.Element {
   const baseStyle = {
     backgroundColor: theme.block,
     borderColor: theme.line,
   };
   const baseClass = "h-full overflow-hidden rounded-2xl border p-4 shadow-sm";
 
-  if (id === "todo" || id === "weeklyTodo") {
-    return (
-      <div className={baseClass} style={baseStyle}>
-        <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        {[1, 2, 3, 4, 5].map((n) => (
-          <div key={n} className="mb-2 flex items-center gap-2 text-sm text-neutral-500">
-            <span className="h-4 w-4 rounded-md border" style={{ borderColor: theme.line }} /> 할 일 {n}
-          </div>
-        ))}
-      </div>
-    );
-  }
+if (id === "todo" || id === "weeklyTodo") {
+  return (
+    <div className={`${baseClass} relative`} style={baseStyle}>
+      <BlockHeader
+        id={id}
+        label={label}
+        theme={theme}
+        onSizeChange={onSizeChange}
+      />
 
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+        <div
+          key={n}
+          className="mb-2 flex items-center gap-3"
+        >
+          <span
+            className="h-4 w-4 rounded-md border"
+            style={{
+              borderColor: theme.line,
+            }}
+          />
+
+          <div
+            className="flex-1"
+            style={{
+              borderBottom: `1px solid ${theme.line}`,
+              height: "18px",
+            }}
+          />
+        </div>
+            ))}
+
+      <ResizeHandle
+        id={id}
+        layout={layout}
+        theme={theme}
+        onResize={onResize}
+      />
+    </div>
+  );
+}
   if (id === "schedule" || id === "studyTime") {
     return (
-      <div className={baseClass} style={baseStyle}>
+      <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-       <HalfHourScheduleRows startTime={timetableStart} />
+        <HalfHourScheduleRows startTime={timetableStart} layout={layout} />
+        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
       </div>
     );
   }
 
   if (id === "habit") {
     return (
-      <div className={baseClass} style={baseStyle}>
+      <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
         <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-500">
           {["월", "화", "수", "목", "금", "토", "일"].map((d) => <span key={d}>{d}</span>)}
           {Array.from({ length: 21 }).map((_, i) => <span key={i} className="h-6 rounded-md border" style={{ borderColor: theme.line }} />)}
         </div>
+        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
       </div>
     );
   }
@@ -392,7 +487,7 @@ function PreviewBlock({
   if (id === "expense" || id === "deadline" || id === "subjectPlan") {
     const rows = id === "subjectPlan" ? ["국어", "수학", "영어", "탐구"] : ["항목", "일정", "메모"];
     return (
-      <div className={baseClass} style={baseStyle}>
+      <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
         {rows.map((item) => (
           <div key={item} className="grid grid-cols-[70px_1fr] border-t py-2 text-sm" style={{ borderColor: theme.line }}>
@@ -400,6 +495,7 @@ function PreviewBlock({
             <span className="text-neutral-300">작성</span>
           </div>
         ))}
+        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
       </div>
     );
   }
@@ -407,7 +503,7 @@ function PreviewBlock({
   if (id === "mealPlan" || id === "exercise" || id === "moodTracker") {
     const days = ["월", "화", "수", "목", "금", "토", "일"];
     return (
-      <div className={baseClass} style={baseStyle}>
+      <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
         <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-500">
           {days.map((day) => <span key={day}>{day}</span>)}
@@ -417,12 +513,39 @@ function PreviewBlock({
     );
   }
 
-  return (
-    <div className={baseClass} style={baseStyle}>
-      <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-      <div className="h-[calc(100%-42px)] rounded-xl" style={{ backgroundColor: theme.soft }} />
-    </div>
-  );
+return (
+  <div className={`${baseClass} relative`} style={baseStyle}>
+    <BlockHeader
+      id={id}
+      label={label}
+      theme={theme}
+      onSizeChange={onSizeChange}
+    />
+
+    <div
+      className="h-[calc(100%-42px)] rounded-xl"
+      style={{ backgroundColor: theme.soft }}
+    />
+
+    <motion.div
+  drag
+  dragMomentum={false}
+  dragElastic={0}
+  animate={{ x: 0, y: 0 }}
+  onDragEnd={(event, info) => {
+    onResize(
+      id,
+      layout.width + info.offset.x,
+      layout.height + info.offset.y
+    );
+  }}
+  className="no-print absolute bottom-2 right-2 h-4 w-4 cursor-se-resize rounded-full"
+  style={{
+    backgroundColor: theme.accent,
+  }}
+/>
+  </div>
+);
 }
 
 export default function DiaryMakerSite() {
@@ -436,8 +559,20 @@ export default function DiaryMakerSite() {
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedBlocks, setSelectedBlocks] = useState<BlockId[]>(["goal", "todo", "schedule", "memo"]);
   const [blockLayouts, setBlockLayouts] = useState<Record<BlockId, BlockLayout>>(defaultLayouts);
-const [timetableStart, setTimetableStart] = useState("08:00");
+  const [timetableStart, setTimetableStart] = useState("08:00");
   const theme = themes[selectedTheme];
+  const pageSizeMap = {
+  A4: { width: 760, height: 1040 },
+  A5: { width: 540, height: 760 },
+  B6: { width: 410, height: 580 },
+  아이패드용: { width: 760, height: 1040 },
+};
+
+const currentPageSize =
+  pageSizeMap[
+    pageSize as keyof typeof pageSizeMap
+  ];
+
 
   useEffect(() => {
     const saved = window.localStorage.getItem("diary-lab-save");
@@ -558,7 +693,20 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
       },
     }));
   };
-
+const resizeBlock = (
+  id: BlockId,
+  width: number,
+  height: number
+) => {
+  setBlockLayouts((prev) => ({
+    ...prev,
+    [id]: {
+      ...prev[id],
+      width: Math.max(180, Math.round(width)),
+      height: Math.max(100, Math.round(height)),
+    },
+  }));
+};
   const resetLayout = () => {
     setBlockLayouts(defaultLayouts);
     setTimeout(() => autoArrange(selectedBlocks), 0);
@@ -577,22 +725,42 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
 
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
-      <style>{`
-      @page {
-  margin: 5mm;
-}
+<style>{`
+  @page {
+    margin: 3mm;
+  }
 
-#print-area {
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
-}
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
-          .no-print { display: none !important; }
-        }
-      `}</style>
+  #print-area {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+
+    #print-area,
+    #print-area * {
+      visibility: visible;
+    }
+
+    #print-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      box-shadow: none !important;
+      min-height: auto !important;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+  }
+`}</style>
 
       <header className="no-print sticky top-0 z-20 border-b border-black/5 bg-[#f7f4ef]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -639,31 +807,14 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
             <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Wand2 className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">자동 정렬</h3><p className="mt-2 leading-7 text-neutral-600">항목 체크 시 상단부터 자동 배치됩니다.</p></CardContent></Card>
             <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Palette className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">색상 변경</h3><p className="mt-2 leading-7 text-neutral-600">미니멀, 베이지, 블루 등 테마를 선택합니다.</p></CardContent></Card>
             <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><CalendarDays className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">30분 시간표</h3><p className="mt-2 leading-7 text-neutral-600">08:00부터 22:00까지 30분 단위로 기록합니다.</p></CardContent></Card>
-            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Printer className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">인쇄 여백</h3><p className="mt-2 leading-7 text-neutral-600">좁게, 보통, 넓게 중 선택할 수 있습니다.</p></CardContent></Card>
+            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Printer className="mb- h-8 w-8" /><h3 className="text-xl font-black">인쇄 여백</h3><p className="mt-2 leading-7 text-neutral-600">좁게, 보통, 넓게 중 선택할 수 있습니다.</p></CardContent></Card>
           </div>
         </section>
-        <section>
-  <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
-    <CalendarDays className="h-5 w-5" /> 시간표 시작 시간
-  </h3>
-
-  <input
-    type="time"
-    step="1800"
-    value={timetableStart}
-    onChange={(e) => setTimetableStart(e.target.value)}
-    className="w-full rounded-2xl border bg-white px-4 py-3 text-sm"
-  />
-
-  <p className="mt-2 text-xs text-neutral-500">
-    30분 단위로 시간표가 자동 생성됩니다.
-  </p>
-</section>
-
+        
         <section id="maker" className="mx-auto max-w-7xl px-6 py-16">
           <div className="mb-8 text-center">
             <p className="text-sm font-bold text-neutral-500">DIARY MAKER</p>
-            <h2 className="mt-2 text-3xl font-black md:text-5xl">나만의 양식 만들기</h2>
+            <h2 className="mt-2 text-2xl font-black md:text-xl">나만의 양식 만들기</h2>
           </div>
 
           <section className="no-print mb-8 rounded-3xl bg-white p-6 shadow-sm">
@@ -730,6 +881,23 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
                     ))}
                   </div>
                 </section>
+        <section>
+  <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
+    <CalendarDays className="h-5 w-5" /> 시간표 시작 시간
+  </h3>
+
+  <input
+    type="time"
+    step="1800"
+    value={timetableStart}
+    onChange={(e) => setTimetableStart(e.target.value)}
+    className="w-full rounded-2xl border bg-white px-4 py-3 text-sm"
+  />
+
+  <p className="mt-2 text-xs text-neutral-500">
+    30분 단위로 시간표가 자동 생성됩니다.
+  </p>
+</section>
 
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CheckSquare className="h-5 w-5" /> 넣을 항목</h3>
@@ -759,10 +927,20 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
             </Card>
 
             <Card className="rounded-3xl border-0 bg-white shadow-sm">
-              <CardContent className="p-4 md:p-8">
-                <div id="print-area" className="mx-auto min-h-[1180px] max-w-[760px] rounded-3xl shadow-inner print:shadow-none" style={{ backgroundColor: theme.page, padding: marginOptions[printMargin].padding }}>
-                  <div className="mb-8 flex items-start justify-between border-b pb-5" style={{ borderColor: theme.line }}>
-                    <div><h2 className="mt-1 text-3xl font-black" style={{ color: theme.accent }}>{plannerType} 플래너</h2><p className="mt-1 text-sm text-neutral-400">{pageSize} · {style} · {themes[selectedTheme].label}</p></div>
+              <CardContent className="p-2 md:p-4">
+                <div
+  id="print-area"
+  className="mx-auto rounded-3xl shadow-inner print:shadow-none"
+  style={{
+    backgroundColor: theme.page,
+    padding: marginOptions[printMargin].padding,
+    width: currentPageSize.width,
+    minHeight: currentPageSize.height,
+  }}
+>
+                  <div className="mb-3 flex items-start justify-between border-b pb-2" style={{ borderColor: theme.line }}>
+                    <div className="no-print">
+<h2 className="mt-1 text-3xl font-black" style={{ color: theme.accent }}>{plannerType} 플래너</h2><p className="mt-1 text-sm text-neutral-400">{pageSize} · {style} · {themes[selectedTheme].label}</p></div>
                     <div className="rounded-2xl border px-4 py-3 text-center" style={{ borderColor: theme.line, backgroundColor: theme.block }}><div className="text-xs text-neutral-400">DATE</div><div className="mt-1 text-sm">____ . ____ . ____</div></div>
                   </div>
 
@@ -772,7 +950,14 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
                       {Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-20 rounded-lg border p-1 text-left text-neutral-300" style={{ borderColor: theme.line, backgroundColor: theme.block }}>{i + 1}</div>)}
                     </div>
                   ) : (
-                    <div className="relative min-h-[980px] rounded-2xl border border-dashed" style={{ borderColor: theme.line, backgroundColor: theme.page }}>
+                    <div
+  className="relative rounded-2xl border-2 border-dashed"
+  style={{
+    borderColor: theme.line,
+    backgroundColor: theme.page,
+    height: currentPageSize.height - 80,
+  }}
+>
                       {blocks.map((block) => {
                         const layout = blockLayouts[block.id];
                         return (
@@ -809,14 +994,22 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
                             className="absolute cursor-grab active:cursor-grabbing"
                             style={{ width: layout.width, height: layout.height }}
                           >
-                            <PreviewBlock id={block.id} label={block.label} layout={layout} theme={theme} timetableStart={timetableStart} onSizeChange={changeBlockSize} />
+                            <PreviewBlock 
+  id={block.id} 
+  label={block.label} 
+  layout={layout} 
+  theme={theme} 
+  timetableStart={timetableStart} 
+  onSizeChange={changeBlockSize}
+  onResize={resizeBlock}
+/>
                           </motion.div>
                         );
                       })}
                     </div>
                   )}
 
-                  <div id="print" className="mt-8 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400" style={{ borderColor: theme.line, backgroundColor: theme.block }}>
+                  <div id="print" className="no-print mt-2 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400" style={{ borderColor: theme.line, backgroundColor: theme.block }}>
                     인쇄 버튼을 누른 뒤 프린터 대상에서 “PDF로 저장”을 선택하세요.
                   </div>
                 </div>
