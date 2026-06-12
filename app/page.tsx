@@ -389,13 +389,19 @@ function ResizeHandle({
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  return (
-    <div
-      onMouseDown={handleMouseDown}
-      className="no-print absolute bottom-2 right-2 h-4 w-4 cursor-se-resize rounded-full"
-      style={{ backgroundColor: theme.accent }}
-    />
-  );
+return (
+  <div
+    onPointerDownCapture={(e) => {
+      e.stopPropagation();
+    }}
+    onMouseDownCapture={(e) => {
+      e.stopPropagation();
+      handleMouseDown(e);
+    }}
+    className="no-print absolute bottom-2 right-2 z-50 h-4 w-4 cursor-se-resize rounded-full"
+    style={{ backgroundColor: theme.accent }}
+  />
+);
 }
 function PreviewBlock({
   id,
@@ -421,6 +427,11 @@ function PreviewBlock({
   const baseClass = "h-full overflow-hidden rounded-2xl border p-4 shadow-sm";
 
 if (id === "todo" || id === "weeklyTodo") {
+  const todoRowCount = Math.max(
+    4,
+    Math.floor((layout.height - 55) / 28)
+  );
+
   return (
     <div className={`${baseClass} relative`} style={baseStyle}>
       <BlockHeader
@@ -430,16 +441,11 @@ if (id === "todo" || id === "weeklyTodo") {
         onSizeChange={onSizeChange}
       />
 
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-        <div
-          key={n}
-          className="mb-2 flex items-center gap-3"
-        >
+      {Array.from({ length: todoRowCount }).map((_, n) => (
+        <div key={n} className="mb-2 flex items-center gap-3">
           <span
             className="h-4 w-4 rounded-md border"
-            style={{
-              borderColor: theme.line,
-            }}
+            style={{ borderColor: theme.line }}
           />
 
           <div
@@ -450,7 +456,7 @@ if (id === "todo" || id === "weeklyTodo") {
             }}
           />
         </div>
-            ))}
+      ))}
 
       <ResizeHandle
         id={id}
@@ -466,7 +472,12 @@ if (id === "todo" || id === "weeklyTodo") {
       <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
         <HalfHourScheduleRows startTime={timetableStart} layout={layout} />
-        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
+        <ResizeHandle
+  id={id}
+  layout={layout}
+  theme={theme}
+  onResize={onResize}
+/>
       </div>
     );
   }
@@ -479,7 +490,12 @@ if (id === "todo" || id === "weeklyTodo") {
           {["월", "화", "수", "목", "금", "토", "일"].map((d) => <span key={d}>{d}</span>)}
           {Array.from({ length: 21 }).map((_, i) => <span key={i} className="h-6 rounded-md border" style={{ borderColor: theme.line }} />)}
         </div>
-        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
+        <ResizeHandle
+  id={id}
+  layout={layout}
+  theme={theme}
+  onResize={onResize}
+/>
       </div>
     );
   }
@@ -495,7 +511,12 @@ if (id === "todo" || id === "weeklyTodo") {
             <span className="text-neutral-300">작성</span>
           </div>
         ))}
-        <ResizeHandle id={id} layout={layout} theme={theme} onResize={onResize} />
+        <ResizeHandle
+  id={id}
+  layout={layout}
+  theme={theme}
+  onResize={onResize}
+/>
       </div>
     );
   }
@@ -509,9 +530,19 @@ if (id === "todo" || id === "weeklyTodo") {
           {days.map((day) => <span key={day}>{day}</span>)}
           {days.map((day) => <span key={`${day}-box`} className="h-12 rounded-md border" style={{ borderColor: theme.line }} />)}
         </div>
+        <ResizeHandle
+  id={id}
+  layout={layout}
+  theme={theme}
+  onResize={onResize}
+/>
       </div>
     );
   }
+const noteLineCount = Math.max(
+  3,
+  Math.floor((layout.height - 58) / 24)
+);
 
 return (
   <div className={`${baseClass} relative`} style={baseStyle}>
@@ -522,32 +553,27 @@ return (
       onSizeChange={onSizeChange}
     />
 
-    <div
-      className="h-[calc(100%-42px)] rounded-xl"
-      style={{ backgroundColor: theme.soft }}
-    />
+    <div className="space-y-3">
+      {Array.from({ length: noteLineCount }).map((_, index) => (
+        <div
+          key={index}
+          style={{
+            borderBottom: `1px solid ${theme.line}`,
+            height: "14px",
+          }}
+        />
+      ))}
+    </div>
 
-    <motion.div
-  drag
-  dragMomentum={false}
-  dragElastic={0}
-  animate={{ x: 0, y: 0 }}
-  onDragEnd={(event, info) => {
-    onResize(
-      id,
-      layout.width + info.offset.x,
-      layout.height + info.offset.y
-    );
-  }}
-  className="no-print absolute bottom-2 right-2 h-4 w-4 cursor-se-resize rounded-full"
-  style={{
-    backgroundColor: theme.accent,
-  }}
-/>
+    <ResizeHandle
+      id={id}
+      layout={layout}
+      theme={theme}
+      onResize={onResize}
+    />
   </div>
 );
 }
-
 export default function DiaryMakerSite() {
   const [plannerType, setPlannerType] = useState("데일리");
   const [pageSize, setPageSize] = useState("A5");
@@ -558,6 +584,10 @@ export default function DiaryMakerSite() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedBlocks, setSelectedBlocks] = useState<BlockId[]>(["goal", "todo", "schedule", "memo"]);
+  const [savedTemplates, setSavedTemplates] =
+  useState<any[]>([]);
+  const [templateName, setTemplateName] =
+  useState("");
   const [blockLayouts, setBlockLayouts] = useState<Record<BlockId, BlockLayout>>(defaultLayouts);
   const [timetableStart, setTimetableStart] = useState("08:00");
   const theme = themes[selectedTheme];
@@ -574,27 +604,32 @@ const currentPageSize =
   ];
 
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("diary-lab-save");
-    if (!saved) return;
+useEffect(() => {
+  const saved = window.localStorage.getItem("diary-lab-save");
 
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed.timetableStart) setTimetableStart(parsed.timetableStart);
-      if (parsed.plannerType) setPlannerType(parsed.plannerType);
-      if (parsed.pageSize) setPageSize(parsed.pageSize);
-      if (parsed.style) setStyle(parsed.style);
-      if (parsed.selectedTheme) setSelectedTheme(parsed.selectedTheme);
-      if (parsed.printMargin) setPrintMargin(parsed.printMargin);
-      if (parsed.selectedCategory) setSelectedCategory(parsed.selectedCategory);
-      if (parsed.selectedTemplate) setSelectedTemplate(parsed.selectedTemplate);
-      if (parsed.selectedBlocks) setSelectedBlocks(parsed.selectedBlocks);
-      if (parsed.blockLayouts) setBlockLayouts({ ...defaultLayouts, ...parsed.blockLayouts });
-    } catch {
-      console.log("저장된 플래너를 불러오지 못했습니다.");
-    }
-  }, []);
+  if (!saved) return;
 
+  try {
+    const data = JSON.parse(saved);
+
+    setPageSize(data.pageSize ?? "A4");
+    setSelectedTheme(data.selectedTheme ?? "minimal");
+    setTimetableStart(data.timetableStart ?? "08:00");
+    setPrintMargin(data.printMargin ?? "normal");
+    setSelectedBlocks(data.selectedBlocks ?? []);
+    setBlockLayouts(data.blockLayouts ?? {});
+  } catch (error) {
+    console.error(error);
+  }
+}, []);
+
+useEffect(() => {
+  const templates = JSON.parse(
+    localStorage.getItem("diary-lab-templates") || "[]"
+  );
+
+  setSavedTemplates(templates);
+}, []);
   const blocks = useMemo(
     () => selectedBlocks.map((id) => blockOptions.find((block) => block.id === id)).filter((block): block is { id: BlockId; label: string } => Boolean(block)),
     [selectedBlocks]
@@ -711,16 +746,77 @@ const resizeBlock = (
     setBlockLayouts(defaultLayouts);
     setTimeout(() => autoArrange(selectedBlocks), 0);
   };
+const savePlanner = () => {
+  window.localStorage.setItem(
+    "diary-lab-save",
+    JSON.stringify({
+      plannerType,
+      pageSize,
+      style,
+      selectedTheme,
+      timetableStart,
+      printMargin,
+      selectedCategory,
+      selectedTemplate,
+      selectedBlocks,
+      blockLayouts,
+    })
+  );
 
-  const savePlanner = () => {
-    window.localStorage.setItem(
-      "diary-lab-save",
-      JSON.stringify({ plannerType, pageSize, style, selectedTheme, timetableStart, printMargin, selectedCategory, selectedTemplate, selectedBlocks, blockLayouts })
-    );
-    setSaveMessage("저장 완료! 다음에 열어도 이 배치를 불러옵니다.");
-    setTimeout(() => setSaveMessage(""), 2500);
+  setSaveMessage("저장 완료! 다음에 열어도 이 배치를 불러옵니다.");
+  setTimeout(() => setSaveMessage(""), 2500);
+};
+
+useEffect(() => {
+  savePlanner();
+}, [
+  plannerType,
+  pageSize,
+  style,
+  selectedTheme,
+  timetableStart,
+  printMargin,
+  selectedCategory,
+  selectedTemplate,
+  selectedBlocks,
+  blockLayouts,
+]);
+const saveTemplate = () => {
+  if (!templateName.trim()) {
+    alert("템플릿 이름을 입력해주세요.");
+    return;
+  }
+
+  const currentTemplates = JSON.parse(
+    localStorage.getItem("diary-lab-templates") || "[]"
+  );
+
+  const newTemplate = {
+    name: templateName,
+    plannerType,
+    pageSize,
+    style,
+    selectedTheme,
+    timetableStart,
+    printMargin,
+    selectedCategory,
+    selectedTemplate,
+    selectedBlocks,
+    blockLayouts,
   };
 
+  const nextTemplates = [...currentTemplates, newTemplate];
+
+  localStorage.setItem(
+    "diary-lab-templates",
+    JSON.stringify(nextTemplates)
+  );
+
+  setSavedTemplates(nextTemplates);
+  setTemplateName("");
+
+  alert("템플릿 저장 완료!");
+};
   const handlePrint = () => window.print();
 
   return (
@@ -729,7 +825,41 @@ const resizeBlock = (
   @page {
     margin: 3mm;
   }
+const saveTemplate = () => {
+  if (!templateName.trim()) {
+    alert("템플릿 이름을 입력해주세요.");
+    return;
+  }
 
+  const savedTemplates = JSON.parse(
+    localStorage.getItem("diary-lab-templates") ||
+      "[]"
+  );
+
+  const newTemplate = {
+    name: templateName,
+    plannerType,
+    pageSize,
+    style,
+    selectedTheme,
+    timetableStart,
+    printMargin,
+    selectedBlocks,
+    blockLayouts,
+  };
+
+  const updatedTemplates = [
+    ...savedTemplates,
+    newTemplate,
+  ];
+
+  localStorage.setItem(
+    "diary-lab-templates",
+    JSON.stringify(updatedTemplates)
+  );
+
+  alert("템플릿 저장 완료!");
+};
   #print-area {
     padding-top: 4px !important;
     padding-bottom: 4px !important;
@@ -910,7 +1040,48 @@ const resizeBlock = (
                     ))}
                   </div>
                 </section>
+<section>
+  <h3 className="mb-3 text-lg font-black">
+    템플릿 저장
+  </h3>
 
+  <input
+    value={templateName}
+    onChange={(e) => setTemplateName(e.target.value)}
+    placeholder="예: 공부용 A5"
+    className="w-full rounded-2xl border p-3"
+  />
+
+  <button
+    onClick={saveTemplate}
+    className="mt-2 w-full rounded-2xl bg-black p-3 text-white"
+  >
+    템플릿 저장
+  </button>
+</section>
+
+<section>
+  <h3 className="mb-3 text-lg font-black">
+    저장된 템플릿
+  </h3>
+
+  {savedTemplates.map((template, index) => (
+    <button
+      key={index}
+      onClick={() => {
+        setPageSize(template.pageSize);
+        setSelectedTheme(template.selectedTheme);
+        setTimetableStart(template.timetableStart);
+        setPrintMargin(template.printMargin);
+        setSelectedBlocks(template.selectedBlocks);
+        setBlockLayouts(template.blockLayouts);
+      }}
+      className="mb-2 w-full rounded-xl border p-3 text-left"
+    >
+      {template.name}
+    </button>
+  ))}
+</section>
                 <div className="rounded-2xl bg-neutral-100 p-4 text-sm leading-6 text-neutral-600">
                   항목을 체크하면 자동으로 상단부터 정렬됩니다. 시간표는 30분 단위이며, 색상과 인쇄 여백도 조정할 수 있습니다.
                 </div>
@@ -920,7 +1091,13 @@ const resizeBlock = (
                 <div className="grid grid-cols-2 gap-2">
                   <Button onClick={() => autoArrange()} variant="outline" className="rounded-2xl py-6 text-base"><Wand2 className="mr-2 h-4 w-4" /> 자동 정렬</Button>
                   <Button onClick={resetLayout} variant="outline" className="rounded-2xl py-6 text-base"><RotateCcw className="mr-2 h-4 w-4" /> 초기화</Button>
-                  <Button onClick={savePlanner} variant="outline" className="rounded-2xl py-6 text-base"><Save className="mr-2 h-4 w-4" /> 저장</Button>
+<Button
+  onClick={savePlanner}
+  variant="outline"
+  className="rounded-2xl py-6 text-base"
+>
+  <Save className="mr-2 h-4 w-4" /> 저장
+</Button>
                   <Button onClick={handlePrint} className="rounded-2xl py-6 text-base"><Printer className="mr-2 h-4 w-4" /> PDF</Button>
                 </div>
               </CardContent>
@@ -968,28 +1145,18 @@ const resizeBlock = (
                             dragElastic={0}
                             initial={false}
                             animate={{ x: layout.x, y: layout.y }}
-                            onDragEnd={(_, info) => {
+onDragEnd={(_, info) => {
   const gridSize = 30;
 
-  let nextX =
+  const nextX =
     Math.round((layout.x + info.offset.x) / gridSize) *
     gridSize;
 
-  let nextY =
+  const nextY =
     Math.round((layout.y + info.offset.y) / gridSize) *
     gridSize;
 
-  const safePosition = preventOverlap(
-    block.id,
-    nextX,
-    nextY
-  );
-
-  updateBlockPosition(
-    block.id,
-    safePosition.x,
-    safePosition.y
-  );
+  updateBlockPosition(block.id, nextX, nextY);
 }}
                             className="absolute cursor-grab active:cursor-grabbing"
                             style={{ width: layout.width, height: layout.height }}
