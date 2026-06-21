@@ -805,8 +805,21 @@ const saveTemplate = () => {
     blockLayouts,
   };
 
-  const nextTemplates = [...currentTemplates, newTemplate];
+const existingIndex = currentTemplates.findIndex(
+  (item: any) => item.name === templateName
+);
 
+let nextTemplates;
+
+if (existingIndex >= 0) {
+  nextTemplates = [...currentTemplates];
+  nextTemplates[existingIndex] = newTemplate;
+} else {
+  nextTemplates = [
+    ...currentTemplates,
+    newTemplate,
+  ];
+}
   localStorage.setItem(
     "diary-lab-templates",
     JSON.stringify(nextTemplates)
@@ -817,7 +830,23 @@ const saveTemplate = () => {
 
   alert("템플릿 저장 완료!");
 };
-  const handlePrint = () => window.print();
+const deleteTemplate = (name: string) => {
+  if (!confirm(`"${name}" 템플릿을 삭제할까요?`)) {
+    return;
+  }
+
+  const nextTemplates = savedTemplates.filter(
+    (item) => item.name !== name
+  );
+
+  localStorage.setItem(
+    "diary-lab-templates",
+    JSON.stringify(nextTemplates)
+  );
+
+  setSavedTemplates(nextTemplates);
+};
+const handlePrint = () => window.print();
 
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
@@ -830,7 +859,19 @@ const saveTemplate = () => {
     alert("템플릿 이름을 입력해주세요.");
     return;
   }
+const deleteTemplate = (name: string) => {
+  const nextTemplates =
+    savedTemplates.filter(
+      (item) => item.name !== name
+    );
 
+  localStorage.setItem(
+    "diary-lab-templates",
+    JSON.stringify(nextTemplates)
+  );
+
+  setSavedTemplates(nextTemplates);
+};
   const savedTemplates = JSON.parse(
     localStorage.getItem("diary-lab-templates") ||
       "[]"
@@ -1065,22 +1106,45 @@ const saveTemplate = () => {
     저장된 템플릿
   </h3>
 
-  {savedTemplates.map((template, index) => (
+{savedTemplates.map((template, index) => (
+  <div
+    key={index}
+    className="mb-2 flex gap-2"
+  >
     <button
-      key={index}
       onClick={() => {
         setPageSize(template.pageSize);
-        setSelectedTheme(template.selectedTheme);
-        setTimetableStart(template.timetableStart);
-        setPrintMargin(template.printMargin);
-        setSelectedBlocks(template.selectedBlocks);
-        setBlockLayouts(template.blockLayouts);
+        setSelectedTheme(
+          template.selectedTheme
+        );
+        setTimetableStart(
+          template.timetableStart
+        );
+        setPrintMargin(
+          template.printMargin
+        );
+        setSelectedBlocks(
+          template.selectedBlocks
+        );
+        setBlockLayouts(
+          template.blockLayouts
+        );
       }}
-      className="mb-2 w-full rounded-xl border p-3 text-left"
+      className="flex-1 rounded-xl border p-3 text-left"
     >
       {template.name}
     </button>
-  ))}
+
+    <button
+      onClick={() =>
+        deleteTemplate(template.name)
+      }
+      className="rounded-xl border px-3"
+    >
+      🗑
+    </button>
+  </div>
+))}
 </section>
                 <div className="rounded-2xl bg-neutral-100 p-4 text-sm leading-6 text-neutral-600">
                   항목을 체크하면 자동으로 상단부터 정렬됩니다. 시간표는 30분 단위이며, 색상과 인쇄 여백도 조정할 수 있습니다.
