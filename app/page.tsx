@@ -1,5 +1,7 @@
 "use client";
 
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -845,6 +847,41 @@ const deleteTemplate = (name: string) => {
   );
 
   setSavedTemplates(nextTemplates);
+};
+const downloadPdf = async () => {
+  const element = document.getElementById("print-area");
+  if (!element) return;
+
+  const canvas = await html2canvas(element, {
+    scale: 3,
+    backgroundColor: "#ffffff",
+    ignoreElements: (el) => el.classList?.contains("no-print"),
+    onclone: (doc) => {
+      doc.querySelectorAll<HTMLElement>("*").forEach((node) => {
+        node.style.boxShadow = "none";
+      });
+    },
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+
+  const finalWidth = imgWidth * scale;
+  const finalHeight = imgHeight * scale;
+
+  const x = (pageWidth - finalWidth) / 2;
+  const y = (pageHeight - finalHeight) / 2;
+
+  pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+  pdf.save("DiaryLab.pdf");
 };
 const handlePrint = () => window.print();
 
