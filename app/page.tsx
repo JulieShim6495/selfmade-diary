@@ -974,7 +974,77 @@ const downloadPdf = async () => {
   pdf.save("DiaryLab.pdf");
 };
 const handlePrint = () => window.print();
+const weeklySplitIndex = Math.ceil(blocks.length / 2);
 
+const weeklyLeftBlocks = blocks.slice(0, weeklySplitIndex);
+const weeklyRightBlocks = blocks.slice(weeklySplitIndex);
+
+const renderBlockCanvas = (
+  pageBlocks: typeof blocks,
+  pageKey: string
+) => (
+  <div
+    className="planner-canvas relative h-full overflow-hidden rounded-2xl border-2 border-dashed"
+    style={{
+      borderColor: theme.line,
+      backgroundColor: theme.page,
+    }}
+  >
+    {pageBlocks.map((block) => {
+      const layout = blockLayouts[block.id];
+
+      return (
+        <motion.div
+          key={`${pageKey}-${block.id}`}
+          drag
+          dragConstraints="parent"
+          dragMomentum={false}
+          dragElastic={0}
+          initial={false}
+          animate={{
+            x: layout.x,
+            y: layout.y,
+          }}
+          onDragEnd={(_, info) => {
+            const gridSize = 30;
+
+            const nextX =
+              Math.round(
+                (layout.x + info.offset.x) / gridSize
+              ) * gridSize;
+
+            const nextY =
+              Math.round(
+                (layout.y + info.offset.y) / gridSize
+              ) * gridSize;
+
+            updateBlockPosition(
+              block.id,
+              nextX,
+              nextY
+            );
+          }}
+          className="absolute cursor-grab active:cursor-grabbing"
+          style={{
+            width: layout.width,
+            height: layout.height,
+          }}
+        >
+          <PreviewBlock
+            id={block.id}
+            label={block.label}
+            layout={layout}
+            theme={theme}
+            timetableStart={timetableStart}
+            timeInterval={timeInterval}
+            onSizeChange={changeBlockSize}
+            onResize={resizeBlock}
+          />
+        </motion.div>
+      );
+    })}
+  </div>
+);
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
 <style>{`
@@ -1150,8 +1220,8 @@ const deleteTemplate = (name: string) => {
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-            <Card className="no-print rounded-3xl border-0 bg-white shadow-sm">
+          <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+            <Card className="no-print min-w-0 overflow-hidden rounded-3xl border-0 bg-white shadow-sm">
               <CardContent className="space-y-6 p-6">
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CalendarDays className="h-5 w-5" /> 종류</h3>
@@ -1319,187 +1389,303 @@ const deleteTemplate = (name: string) => {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl border-0 bg-white shadow-sm">
+            <Card className="min-w-0 rounded-3xl border-0 bg-white shadow-sm">
               <CardContent className="overflow-x-auto p-2 md:p-4">
-                <div
-  id="print-area"
-  className="mx-auto rounded-3xl shadow-inner print:shadow-none"
-  style={{
-    backgroundColor: theme.page,
-    padding: marginOptions[printMargin].padding,
-    width:
-  plannerType === "먼슬리"
-    ? currentPageSize.width * 2 + 24
-    : currentPageSize.width,
-    minHeight: currentPageSize.height,
-  }}
->
 <div
-  className="mb-3 flex items-start justify-between border-b pb-2"
-  style={{ borderColor: theme.line }}
+  id="print-area"
+  className="planner-spread flex w-max gap-6"
 >
-  <div className="no-print">
-    <h2
-      className="mt-1 text-3xl font-black"
-      style={{ color: theme.accent }}
+  {/* 데일리: 1페이지 */}
+  {plannerType === "데일리" && (
+    <div
+      className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+      style={{
+        width: currentPageSize.width,
+        height: currentPageSize.height,
+        padding: marginOptions[printMargin].padding,
+        backgroundColor: theme.page,
+      }}
     >
-      {plannerType} 플래너
-    </h2>
+      <div
+        className="mb-3 flex items-start justify-between border-b pb-2"
+        style={{ borderColor: theme.line }}
+      >
+        <div className="no-print">
+          <h2
+            className="text-2xl font-black"
+            style={{ color: theme.accent }}
+          >
+            데일리 플래너
+          </h2>
 
-    <p className="mt-1 text-sm text-neutral-400">
-      {pageSize} · {style} · {themes[selectedTheme].label}
-    </p>
+          <p className="mt-1 text-sm text-neutral-400">
+            {pageSize} · {style} · {themes[selectedTheme].label}
+          </p>
+        </div>
+
+        <div
+          className="rounded-2xl border px-4 py-2 text-center"
+          style={{
+            borderColor: theme.line,
+            backgroundColor: theme.block,
+          }}
+        >
+          <div className="text-xs text-neutral-400">
+            DATE
+          </div>
+
+          <div className="mt-1 text-xs">
+            ____ . ____ . ____
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height: "calc(100% - 70px)" }}>
+        {renderBlockCanvas(blocks, "daily")}
+      </div>
+    </div>
+  )}
+
+  {/* 위클리: 왼쪽 페이지 */}
+  {plannerType === "위클리" && (
+    <>
+      <div
+        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        style={{
+          width: currentPageSize.width,
+          height: currentPageSize.height,
+          padding: marginOptions[printMargin].padding,
+          backgroundColor: theme.page,
+        }}
+      >
+        <div
+          className="mb-3 flex items-center justify-between border-b pb-2"
+          style={{ borderColor: theme.line }}
+        >
+          <div
+            className="font-black"
+            style={{ color: theme.accent }}
+          >
+            WEEKLY · 1
+          </div>
+
+          <div className="text-xs text-neutral-400">
+            ____ . ____ ~ ____ . ____
+          </div>
+        </div>
+
+        <div style={{ height: "calc(100% - 45px)" }}>
+          {renderBlockCanvas(
+            weeklyLeftBlocks,
+            "weekly-left"
+          )}
+        </div>
+      </div>
+
+      {/* 위클리: 오른쪽 페이지 */}
+      <div
+        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        style={{
+          width: currentPageSize.width,
+          height: currentPageSize.height,
+          padding: marginOptions[printMargin].padding,
+          backgroundColor: theme.page,
+        }}
+      >
+        <div
+          className="mb-3 flex items-center justify-between border-b pb-2"
+          style={{ borderColor: theme.line }}
+        >
+          <div
+            className="font-black"
+            style={{ color: theme.accent }}
+          >
+            WEEKLY · 2
+          </div>
+
+          <div className="text-xs text-neutral-400">
+            ____ . ____ ~ ____ . ____
+          </div>
+        </div>
+
+        <div style={{ height: "calc(100% - 45px)" }}>
+          {renderBlockCanvas(
+            weeklyRightBlocks,
+            "weekly-right"
+          )}
+        </div>
+      </div>
+    </>
+  )}
+
+  {/* 먼슬리: 왼쪽 페이지 */}
+  {plannerType === "먼슬리" && (
+    <>
+      <div
+        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        style={{
+  width: currentPageSize.width,
+  height: currentPageSize.height,
+  padding: marginOptions[printMargin].padding,
+  backgroundColor: theme.page,
+  boxSizing: "border-box",
+}}
+      >
+        <div
+          className="mb-3 flex items-start justify-between border-b pb-2"
+          style={{ borderColor: theme.line }}
+        >
+          <div
+            className="font-black"
+            style={{ color: theme.accent }}
+          >
+            MONTHLY · 1
+          </div>
+
+          <div
+            className="rounded-xl border px-3 py-2"
+            style={{
+              borderColor: theme.line,
+              backgroundColor: theme.block,
+            }}
+          >
+            <div className="mb-1 text-center text-[10px] font-semibold">
+              MONTH
+            </div>
+
+            <div className="grid grid-cols-6 gap-1 text-center text-[10px]">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <span
+                  key={index}
+                  className="rounded border px-1"
+                  style={{ borderColor: theme.line }}
+                >
+                  {index + 1}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-2 grid w-full grid-cols-3 gap-1 text-center text-xs font-bold">
+          {["SUN", "MON", "TUE", "WED"].map((day) => (
+            <div
+              key={day}
+              className="py-2"
+              style={{ color: theme.accent }}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        <div
+  className="grid w-full min-w-0 grid-cols-3 gap-1"
+  style={{ height: "calc(100% - 105px)" }}
+>
+          {Array.from({ length: 20 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-lg border"
+              style={{
+                borderColor: theme.line,
+                backgroundColor: theme.block,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 먼슬리: 오른쪽 페이지 */}
+      <div
+        className="planner-page shrink-0 overflow-hidden rounded-3xl shadow-inner print:shadow-none"
+        style={{
+          width: currentPageSize.width,
+          height: currentPageSize.height,
+          padding: marginOptions[printMargin].padding,
+          backgroundColor: theme.page,
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          className="mb-3 flex items-start justify-between border-b pb-2"
+          style={{ borderColor: theme.line }}
+        >
+          <div
+            className="font-black"
+            style={{ color: theme.accent }}
+          >
+            MONTHLY · 2
+          </div>
+
+          <div
+            className="rounded-xl border px-3 py-2"
+            style={{
+              borderColor: theme.line,
+              backgroundColor: theme.block,
+            }}
+          >
+            <div className="mb-1 text-center text-[10px] font-semibold">
+              MONTH
+            </div>
+            
+            <div className="grid grid-cols-6 gap-1 text-center text-[10px]">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <span
+                  key={index}
+                  className="rounded border px-1"
+                  style={{ borderColor: theme.line }}
+                >
+                  {index + 1}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+         <div className="mb-2 grid w-full grid-cols-3 gap-1 text-center text-xs font-bold">
+    {["THU", "FRI", "SAT"].map((day) => (
+      <div
+        key={day}
+        className="min-w-0 py-2"
+        style={{ color: theme.accent }}
+      >
+        {day}
+      </div>
+    ))}
   </div>
 
   <div
-    className="rounded-2xl border px-4 py-3"
+    className="grid w-full min-w-0 grid-cols-3 gap-1"
+    style={{ height: "calc(100% - 105px)" }}
+  >
+    {Array.from({ length: 15 }).map((_, index) => (
+      <div
+        key={index}
+        className="min-w-0 rounded-lg border"
+        style={{
+          borderColor: theme.line,
+          backgroundColor: theme.block,
+        }}
+      />
+    ))}
+  </div>
+</div>    </>
+  )}
+  </div>
+
+  <div
+    id="print"
+    className="no-print mt-2 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400"
     style={{
       borderColor: theme.line,
       backgroundColor: theme.block,
     }}
   >
-    <div className="mb-2 text-center text-xs font-semibold">
-      MONTH
-    </div>
-
-    <div className="grid grid-cols-6 gap-1 text-center text-xs">
-      {Array.from({ length: 12 }).map((_, index) => (
-        <div
-          key={index}
-          className="rounded-md border px-2 py-1"
-          style={{ borderColor: theme.line }}
-        >
-          {index + 1}
-        </div>
-      ))}
-    </div>
+    PDF 저장 시 각 페이지가 한 장씩 출력됩니다.
   </div>
-</div>
-{plannerType === "먼슬리" ? (
-  <div className="monthly-spread grid gap-6 xl:grid-cols-2">
-    {/* 왼쪽 페이지 */}
-    <div
-      className="monthly-page rounded-2xl border p-4"
-      style={{
-        borderColor: theme.line,
-        backgroundColor: theme.page,
-        width: currentPageSize.width,
-        minHeight: currentPageSize.height,
-      }}
-    >
-      <div className="mb-3 grid grid-cols-4 gap-1 text-center text-xs font-bold">
-        {["SUN", "MON", "TUE", "WED"].map((day) => (
-          <div key={day} className="py-2" style={{ color: theme.accent }}>
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-4 gap-1">
-        {Array.from({ length: 20 }).map((_, index) => (
-          <div
-            key={index}
-            className="rounded-lg border"
-            style={{
-              height: `${(currentPageSize.height - 130) / 5}px`,
-              borderColor: theme.line,
-              backgroundColor: theme.block,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-
-    {/* 오른쪽 페이지 */}
-    <div
-      className="monthly-page rounded-2xl border p-4"
-      style={{
-        borderColor: theme.line,
-        backgroundColor: theme.page,
-        width: currentPageSize.width,
-        minHeight: currentPageSize.height,
-      }}
-    >
-      <div className="mb-3 grid grid-cols-3 gap-1 text-center text-xs font-bold">
-        {["THU", "FRI", "SAT"].map((day) => (
-          <div key={day} className="py-2" style={{ color: theme.accent }}>
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-3 gap-1">
-        {Array.from({ length: 15 }).map((_, index) => (
-          <div
-            key={index}
-            className="rounded-lg border"
-            style={{
-              height: `${(currentPageSize.height - 130) / 5}px`,
-              borderColor: theme.line,
-              backgroundColor: theme.block,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  </div>
-) : (
-                      <div
-  className="relative rounded-2xl border-2 border-dashed"
-  style={{
-    borderColor: theme.line,
-    backgroundColor: theme.page,
-    height: currentPageSize.height - 80,
-  }}
->
-                      {blocks.map((block) => {
-                        const layout = blockLayouts[block.id];
-                        return (
-                          <motion.div
-                            key={block.id}
-                            drag
-                            dragMomentum={false}
-                            dragElastic={0}
-                            initial={false}
-                            animate={{ x: layout.x, y: layout.y }}
-onDragEnd={(_, info) => {
-  const gridSize = 30;
-
-  const nextX =
-    Math.round((layout.x + info.offset.x) / gridSize) *
-    gridSize;
-
-  const nextY =
-    Math.round((layout.y + info.offset.y) / gridSize) *
-    gridSize;
-
-  updateBlockPosition(block.id, nextX, nextY);
-}}
-                            className="absolute cursor-grab active:cursor-grabbing"
-                            style={{ width: layout.width, height: layout.height }}
-                          >
-                            <PreviewBlock
-  id={block.id}
-  label={block.label}
-  layout={layout}
-  theme={theme}
-  timetableStart={timetableStart}
-  timeInterval={timeInterval}
-  onSizeChange={changeBlockSize}
-  onResize={resizeBlock}
-/>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div id="print" className="no-print mt-2 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400" style={{ borderColor: theme.line, backgroundColor: theme.block }}>
-                    인쇄 버튼을 누른 뒤 프린터 대상에서 “PDF로 저장”을 선택하세요.
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+</CardContent>          
+</Card>
           </div>
         </section>
       </main>
