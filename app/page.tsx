@@ -306,50 +306,50 @@ function BlockHeader({
 function HalfHourScheduleRows({
   startTime,
   layout,
+  timeInterval,
 }: {
   startTime: string;
   layout: BlockLayout;
+  timeInterval: 15 | 30 | 60;
 }) {
-  const rows = [];
-const visibleRowCount = Math.max(4, Math.floor((layout.height - 55) / 24));
-  const [hourText, minuteText] =
-    startTime.split(":");
+  const rows: string[] = [];
+
+  const [hourText, minuteText] = startTime.split(":");
 
   let hour = Number(hourText);
   let minute = Number(minuteText);
 
-  for (let i = 0; i < 24; i++) {
+  const visibleRowCount = Math.max(
+    4,
+    Math.floor((layout.height - 55) / 24)
+  );
+
+  for (let i = 0; i < 96; i++) {
     rows.push(
-      `${String(hour).padStart(2, "0")}:${String(
-        minute
-      ).padStart(2, "0")}`
+      `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
     );
 
-    minute += 30;
+    minute += timeInterval;
 
-    if (minute >= 60) {
-      minute = 0;
+    while (minute >= 60) {
+      minute -= 60;
       hour += 1;
     }
+
     if (hour >= 24) {
-  hour = 0;
-}
+      hour = 0;
+    }
   }
 
   return (
     <div className="max-h-[calc(100%-44px)] overflow-hidden">
-      {rows.slice(0, visibleRowCount).map((time) => (
+      {rows.slice(0, visibleRowCount).map((time, index) => (
         <div
-          key={time}
+          key={`${time}-${index}`}
           className="grid grid-cols-[56px_1fr] border-t py-1.5 text-xs"
-          style={{
-            borderColor: "rgba(0,0,0,0.08)",
-          }}
+          style={{ borderColor: "rgba(0,0,0,0.08)" }}
         >
-          <span className="text-neutral-400">
-            {time}
-          </span>
-
+          <span className="text-neutral-400">{time}</span>
         </div>
       ))}
     </div>
@@ -411,6 +411,8 @@ function PreviewBlock({
   layout,
   theme,
   timetableStart,
+  timeInterval,
+
   onSizeChange,
   onResize,
 }: {
@@ -419,6 +421,7 @@ function PreviewBlock({
   layout: BlockLayout;
   theme: typeof themes[ThemeKey];
   timetableStart: string;
+  timeInterval: 15 | 30 | 60;
   onSizeChange: (id: BlockId, key: "width" | "height", amount: number) => void;
   onResize: (id: BlockId, width: number, height: number) => void;
 }): import("react/jsx-runtime").JSX.Element {
@@ -427,7 +430,37 @@ function PreviewBlock({
     borderColor: theme.line,
   };
   const baseClass = "h-full overflow-hidden rounded-2xl border p-4 shadow-sm";
+if (id === "goal" || id === "weeklyGoal") {
+  return (
+    <div className={`${baseClass} relative`} style={baseStyle}>
+      <BlockHeader
+        id={id}
+        label={label}
+        theme={theme}
+        onSizeChange={onSizeChange}
+      />
 
+      <div className="space-y-4">
+        {[1, 2].map((line) => (
+          <div
+            key={line}
+            style={{
+              height: "20px",
+              borderBottom: `1px solid ${theme.line}`,
+            }}
+          />
+        ))}
+      </div>
+
+      <ResizeHandle
+        id={id}
+        layout={layout}
+        theme={theme}
+        onResize={onResize}
+      />
+    </div>
+  );
+}
 if (id === "todo" || id === "weeklyTodo") {
   const todoRowCount = Math.max(
     4,
@@ -473,7 +506,11 @@ if (id === "todo" || id === "weeklyTodo") {
     return (
       <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        <HalfHourScheduleRows startTime={timetableStart} layout={layout} />
+<HalfHourScheduleRows
+  startTime={timetableStart}
+  layout={layout}
+  timeInterval={timeInterval}
+/>
         <ResizeHandle
   id={id}
   layout={layout}
@@ -580,6 +617,7 @@ export default function DiaryMakerSite() {
   const [plannerType, setPlannerType] = useState("데일리");
   const [pageSize, setPageSize] = useState("A5");
   const [style, setStyle] = useState("미니멀");
+  
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("minimal");
   const [printMargin, setPrintMargin] = useState<MarginKey>("normal");
   const [selectedCategory, setSelectedCategory] = useState<WeeklyCategory>("study");
@@ -592,6 +630,7 @@ export default function DiaryMakerSite() {
   useState("");
   const [blockLayouts, setBlockLayouts] = useState<Record<BlockId, BlockLayout>>(defaultLayouts);
   const [timetableStart, setTimetableStart] = useState("08:00");
+  const [timeInterval, setTimeInterval] = useState<15 | 30 | 60>(30);
   const theme = themes[selectedTheme];
   const pageSizeMap = {
   A4: { width: 760, height: 1040 },
@@ -617,6 +656,9 @@ useEffect(() => {
     setPageSize(data.pageSize ?? "A4");
     setSelectedTheme(data.selectedTheme ?? "minimal");
     setTimetableStart(data.timetableStart ?? "08:00");
+    setTimeInterval(
+  data.timeInterval ?? 30
+);
     setPrintMargin(data.printMargin ?? "normal");
     setSelectedBlocks(data.selectedBlocks ?? []);
     setBlockLayouts(data.blockLayouts ?? {});
@@ -647,16 +689,49 @@ useEffect(() => {
     return [...selected, ...unselected];
   }, [selectedBlocks]);
 
-  const autoArrange = (targetBlocks = selectedBlocks) => {
-    setBlockLayouts((prev) => {
-      const next = { ...prev };
-      targetBlocks.forEach((id, index) => {
-        const position = autoLayoutPositions[index] ?? autoLayoutPositions[autoLayoutPositions.length - 1];
-        next[id] = { ...position };
-      });
-      return next;
+const autoArrange = (targetBlocks = selectedBlocks) => {
+  setBlockLayouts((prev) => {
+    const next = { ...prev };
+
+    const gap = 16;
+    const padding = marginOptions[printMargin].padding;
+
+    const canvasWidth = Math.max(
+      180,
+      currentPageSize.width - padding * 2
+    );
+
+    const canvasHeight = Math.max(
+      100,
+      currentPageSize.height - padding * 2 - 80
+    );
+
+    const columns = canvasWidth >= 420 ? 2 : 1;
+    const rows = Math.ceil(targetBlocks.length / columns);
+
+    const blockWidth =
+      (canvasWidth - gap * (columns - 1)) / columns;
+
+    const blockHeight =
+      (canvasHeight - gap * Math.max(0, rows - 1)) /
+      Math.max(1, rows);
+
+    targetBlocks.forEach((id, index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+
+      next[id] = {
+        ...prev[id],
+        x: column * (blockWidth + gap),
+        y: row * (blockHeight + gap),
+        width: blockWidth,
+        height: blockHeight,
+      };
     });
-  };
+
+    return next;
+  });
+};
 
   const toggleBlock = (id: BlockId) => {
     setSelectedBlocks((prev) => {
@@ -757,6 +832,7 @@ const savePlanner = () => {
       style,
       selectedTheme,
       timetableStart,
+      timeInterval,
       printMargin,
       selectedCategory,
       selectedTemplate,
@@ -770,7 +846,21 @@ const savePlanner = () => {
 };
 
 useEffect(() => {
-  savePlanner();
+  window.localStorage.setItem(
+    "diary-lab-save",
+    JSON.stringify({
+      plannerType,
+      pageSize,
+      style,
+      selectedTheme,
+      timetableStart,
+      printMargin,
+      selectedCategory,
+      selectedTemplate,
+      selectedBlocks,
+      blockLayouts,
+    })
+  );
 }, [
   plannerType,
   pageSize,
@@ -946,6 +1036,22 @@ const deleteTemplate = (name: string) => {
   }
 
   @media print {
+  .monthly-spread {
+  display: block !important;
+}
+
+.monthly-page {
+  width: 100% !important;
+  min-height: 100vh !important;
+  break-after: page;
+  page-break-after: always;
+  box-sizing: border-box;
+}
+
+.monthly-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
     body * {
       visibility: hidden;
     }
@@ -1003,20 +1109,11 @@ const deleteTemplate = (name: string) => {
               </div>
               <div className="grid gap-3">
                 <div className="rounded-2xl p-4 font-bold" style={{ backgroundColor: theme.soft }}>색상 커스터마이징</div>
-                <div className="rounded-2xl p-4 font-bold" style={{ backgroundColor: theme.soft }}>30분 단위 시간표</div>
+                <div className="rounded-2xl p-4 font-bold" style={{ backgroundColor: theme.soft }}>원하는 단위로 조절하는 시간표</div>
                 <div className="grid grid-cols-2 gap-3"><div className="h-28 rounded-2xl" style={{ backgroundColor: theme.soft }} /><div className="h-28 rounded-2xl" style={{ backgroundColor: theme.soft }} /></div>
               </div>
             </div>
           </motion.div>
-        </section>
-
-        <section className="no-print mx-auto max-w-7xl px-6 py-8">
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Wand2 className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">자동 정렬</h3><p className="mt-2 leading-7 text-neutral-600">항목 체크 시 상단부터 자동 배치됩니다.</p></CardContent></Card>
-            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Palette className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">색상 변경</h3><p className="mt-2 leading-7 text-neutral-600">미니멀, 베이지, 블루 등 테마를 선택합니다.</p></CardContent></Card>
-            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><CalendarDays className="mb-4 h-8 w-8" /><h3 className="text-xl font-black">30분 시간표</h3><p className="mt-2 leading-7 text-neutral-600">08:00부터 22:00까지 30분 단위로 기록합니다.</p></CardContent></Card>
-            <Card className="rounded-3xl border-0 bg-white shadow-sm"><CardContent className="p-6"><Printer className="mb- h-8 w-8" /><h3 className="text-xl font-black">인쇄 여백</h3><p className="mt-2 leading-7 text-neutral-600">좁게, 보통, 넓게 중 선택할 수 있습니다.</p></CardContent></Card>
-          </div>
         </section>
         
         <section id="maker" className="mx-auto max-w-7xl px-6 py-16">
@@ -1091,9 +1188,27 @@ const deleteTemplate = (name: string) => {
                 </section>
         <section>
   <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
-    <CalendarDays className="h-5 w-5" /> 시간표 시작 시간
+    <CalendarDays className="h-5 w-5" /> 시간표 설정
   </h3>
+<section>
 
+  <div className="grid grid-cols-3 gap-2">
+    {[15, 30, 60].map((minutes) => (
+      <button
+        key={minutes}
+        type="button"
+        onClick={() => setTimeInterval(minutes as 15 | 30 | 60)}
+        className={`rounded-2xl border px-3 py-3 text-sm ${
+          timeInterval === minutes
+            ? "border-neutral-900 bg-neutral-900 text-white"
+            : "bg-white"
+        }`}
+      >
+        {minutes === 60 ? "1시간" : `${minutes}분`}
+      </button>
+    ))}
+  </div>
+</section>
   <input
     type="time"
     step="1800"
@@ -1103,7 +1218,7 @@ const deleteTemplate = (name: string) => {
   />
 
   <p className="mt-2 text-xs text-neutral-500">
-    30분 단위로 시간표가 자동 생성됩니다.
+    선택하는 단위로 시간표가 자동 생성됩니다.
   </p>
 </section>
 
@@ -1205,30 +1320,131 @@ const deleteTemplate = (name: string) => {
             </Card>
 
             <Card className="rounded-3xl border-0 bg-white shadow-sm">
-              <CardContent className="p-2 md:p-4">
+              <CardContent className="overflow-x-auto p-2 md:p-4">
                 <div
   id="print-area"
   className="mx-auto rounded-3xl shadow-inner print:shadow-none"
   style={{
     backgroundColor: theme.page,
     padding: marginOptions[printMargin].padding,
-    width: currentPageSize.width,
+    width:
+  plannerType === "먼슬리"
+    ? currentPageSize.width * 2 + 24
+    : currentPageSize.width,
     minHeight: currentPageSize.height,
   }}
 >
-                  <div className="mb-3 flex items-start justify-between border-b pb-2" style={{ borderColor: theme.line }}>
-                    <div className="no-print">
-<h2 className="mt-1 text-3xl font-black" style={{ color: theme.accent }}>{plannerType} 플래너</h2><p className="mt-1 text-sm text-neutral-400">{pageSize} · {style} · {themes[selectedTheme].label}</p></div>
-                    <div className="rounded-2xl border px-4 py-3 text-center" style={{ borderColor: theme.line, backgroundColor: theme.block }}><div className="text-xs text-neutral-400">DATE</div><div className="mt-1 text-sm">____ . ____ . ____</div></div>
-                  </div>
+<div
+  className="mb-3 flex items-start justify-between border-b pb-2"
+  style={{ borderColor: theme.line }}
+>
+  <div className="no-print">
+    <h2
+      className="mt-1 text-3xl font-black"
+      style={{ color: theme.accent }}
+    >
+      {plannerType} 플래너
+    </h2>
 
-                  {plannerType === "먼슬리" ? (
-                    <div className="mb-5 grid grid-cols-7 gap-1 text-center text-xs">
-                      {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => <div key={day} className="py-2 font-bold" style={{ color: theme.accent }}>{day}</div>)}
-                      {Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-20 rounded-lg border p-1 text-left text-neutral-300" style={{ borderColor: theme.line, backgroundColor: theme.block }}>{i + 1}</div>)}
-                    </div>
-                  ) : (
-                    <div
+    <p className="mt-1 text-sm text-neutral-400">
+      {pageSize} · {style} · {themes[selectedTheme].label}
+    </p>
+  </div>
+
+  <div
+    className="rounded-2xl border px-4 py-3"
+    style={{
+      borderColor: theme.line,
+      backgroundColor: theme.block,
+    }}
+  >
+    <div className="mb-2 text-center text-xs font-semibold">
+      MONTH
+    </div>
+
+    <div className="grid grid-cols-6 gap-1 text-center text-xs">
+      {Array.from({ length: 12 }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-md border px-2 py-1"
+          style={{ borderColor: theme.line }}
+        >
+          {index + 1}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+{plannerType === "먼슬리" ? (
+  <div className="monthly-spread grid gap-6 xl:grid-cols-2">
+    {/* 왼쪽 페이지 */}
+    <div
+      className="monthly-page rounded-2xl border p-4"
+      style={{
+        borderColor: theme.line,
+        backgroundColor: theme.page,
+        width: currentPageSize.width,
+        minHeight: currentPageSize.height,
+      }}
+    >
+      <div className="mb-3 grid grid-cols-4 gap-1 text-center text-xs font-bold">
+        {["SUN", "MON", "TUE", "WED"].map((day) => (
+          <div key={day} className="py-2" style={{ color: theme.accent }}>
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-4 gap-1">
+        {Array.from({ length: 20 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-lg border"
+            style={{
+              height: `${(currentPageSize.height - 130) / 5}px`,
+              borderColor: theme.line,
+              backgroundColor: theme.block,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+
+    {/* 오른쪽 페이지 */}
+    <div
+      className="monthly-page rounded-2xl border p-4"
+      style={{
+        borderColor: theme.line,
+        backgroundColor: theme.page,
+        width: currentPageSize.width,
+        minHeight: currentPageSize.height,
+      }}
+    >
+      <div className="mb-3 grid grid-cols-3 gap-1 text-center text-xs font-bold">
+        {["THU", "FRI", "SAT"].map((day) => (
+          <div key={day} className="py-2" style={{ color: theme.accent }}>
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-1">
+        {Array.from({ length: 15 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-lg border"
+            style={{
+              height: `${(currentPageSize.height - 130) / 5}px`,
+              borderColor: theme.line,
+              backgroundColor: theme.block,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+) : (
+                      <div
   className="relative rounded-2xl border-2 border-dashed"
   style={{
     borderColor: theme.line,
@@ -1262,12 +1478,13 @@ onDragEnd={(_, info) => {
                             className="absolute cursor-grab active:cursor-grabbing"
                             style={{ width: layout.width, height: layout.height }}
                           >
-                            <PreviewBlock 
-  id={block.id} 
-  label={block.label} 
-  layout={layout} 
-  theme={theme} 
-  timetableStart={timetableStart} 
+                            <PreviewBlock
+  id={block.id}
+  label={block.label}
+  layout={layout}
+  theme={theme}
+  timetableStart={timetableStart}
+  timeInterval={timeInterval}
   onSizeChange={changeBlockSize}
   onResize={resizeBlock}
 />
