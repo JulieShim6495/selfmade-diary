@@ -635,7 +635,18 @@ export default function DiaryMakerSite() {
   const [plannerType, setPlannerType] = useState("데일리");
   const [pageSize, setPageSize] = useState("A5");
   const [style, setStyle] = useState("미니멀");
-  
+  const [freeBlocks, setFreeBlocks] = useState([
+  {
+    id: "free-1",
+    title: "자유 블록",
+    rowCount: 5,
+    showCheckbox: true,
+    titleAlign: "left" as const,
+    titleSize: 16,
+  },
+]);
+
+const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("minimal");
   const [printMargin, setPrintMargin] = useState<MarginKey>("normal");
   const [selectedCategory, setSelectedCategory] = useState<WeeklyCategory>("study");
