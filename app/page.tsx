@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import FreeBlock from "@/components/FreeBlock";
+import FreeBlockSettings from "@/components/FreeBlockSettings";
 
 type BlockId =
   | "goal"
@@ -256,7 +258,23 @@ const autoLayoutPositions: BlockLayout[] = [
   { x: 330, y: 730, width: 300, height: 190 },
   { x: 165, y: 960, width: 300, height: 190 },
 ];
+const addFreeBlock = () => {
+  const newId = `free-${Date.now()}`;
 
+  setFreeBlocks((previous) => [
+    ...previous,
+    {
+      id: newId,
+      title: "새 자유 블록",
+      rowCount: 5,
+      showCheckbox: true,
+      titleAlign: "left",
+      titleSize: 16,
+    },
+  ]);
+
+  setSelectedFreeBlockId(newId);
+};
 function TemplateThumbnail({ blocks, theme }: { blocks: BlockId[]; theme: typeof themes[ThemeKey] }) {
   return (
     <div className="mb-3 h-28 rounded-2xl border p-2" style={{ backgroundColor: theme.page, borderColor: theme.line }}>
