@@ -834,7 +834,7 @@ const autoArrange = (targetBlocks = selectedBlocks) => {
 };
 const addFreeBlock = () => {
   const newId = `free-${Date.now()}`;
-
+  const index = freeBlocks.length;
   setFreeBlocks((previous) => [
     ...previous,
     {
@@ -845,8 +845,8 @@ const addFreeBlock = () => {
       titleAlign: "left" as const,
       titleSize: 16,
 
-      x: 20,
-      y: 20,
+      x: 20 + (index % 2) * 260,
+      y: 20+ Math.floor(index / 2) * 200,
       width: 240,
       height: 180,
     },
@@ -854,6 +854,7 @@ const addFreeBlock = () => {
 
   setSelectedFreeBlockId(newId);
 };
+
   const toggleBlock = (id: BlockId) => {
     setSelectedBlocks((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [id, ...prev];
@@ -868,7 +869,7 @@ const addFreeBlock = () => {
     setSelectedBlocks(template.blocks);
     autoArrange(template.blocks);
   };
-  const deleteSelectedFreeBlock = () => {
+const deleteSelectedFreeBlock = () => {
   if (freeBlocks.length <= 1) return;
 
   const remainingBlocks = freeBlocks.filter(
@@ -877,6 +878,31 @@ const addFreeBlock = () => {
 
   setFreeBlocks(remainingBlocks);
   setSelectedFreeBlockId(remainingBlocks[0].id);
+};
+
+const duplicateSelectedFreeBlock = () => {
+  const source = freeBlocks.find(
+    (block) => block.id === selectedFreeBlockId
+  );
+
+  if (!source) return;
+
+  const newId = `free-${Date.now()}`;
+
+  const duplicatedBlock: FreeBlockItem = {
+    ...source,
+    id: newId,
+    title: `${source.title} 복사본`,
+    x: source.x + 30,
+    y: source.y + 30,
+  };
+
+  setFreeBlocks((previous) => [
+    ...previous,
+    duplicatedBlock,
+  ]);
+
+  setSelectedFreeBlockId(newId);
 };
 const preventOverlap = (id: BlockId, x: number, y: number) => {
   const gridSize = 30;
@@ -1544,6 +1570,13 @@ const deleteTemplate = (name: string) => {
   className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
 >
   + 자유 블록 추가
+</button>
+<button
+  type="button"
+  onClick={duplicateSelectedFreeBlock}
+  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+>
+  선택한 자유 블록 복제
 </button>
 <button
   type="button"
