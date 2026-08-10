@@ -1247,11 +1247,6 @@ const renderBlockCanvas = (
       style={{
   width: layout.width,
   height: layout.height,
-  outline:
-    selectedFreeBlockId === freeBlock.id
-      ? "2px solid #171717"
-      : "none",
-  outlineOffset: 3,
   zIndex:
     selectedFreeBlockId === freeBlock.id
       ? 20
@@ -1259,6 +1254,9 @@ const renderBlockCanvas = (
 }}
       onClick={() => setSelectedFreeBlockId(freeBlock.id)}
     >
+      {selectedFreeBlockId === freeBlock.id && (
+  <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
+)}
       <FreeBlock
         title={freeBlock.title}
         rowCount={freeBlock.rowCount}
