@@ -408,6 +408,54 @@ function ResizeHandle({
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   };
+    return (
+    <div
+      onMouseDown={handleMouseDown}
+      className="absolute bottom-1 right-1 h-4 w-4 cursor-se-resize rounded-sm border border-neutral-400 bg-white"
+    />
+  );
+}
+
+function FreeBlockResizeHandle({
+  freeBlock,
+  theme,
+  onResize,
+}: {
+  freeBlock: FreeBlockItem;
+  theme: typeof themes[ThemeKey];
+  onResize: (id: string, width: number, height: number) => void;
+}) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = freeBlock.width;
+    const startHeight = freeBlock.height;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const nextWidth =
+        startWidth + (moveEvent.clientX - startX);
+
+      const nextHeight =
+        startHeight + (moveEvent.clientY - startY);
+
+      onResize(
+        freeBlock.id,
+        Math.max(180, nextWidth),
+        Math.max(100, nextHeight)
+      );
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
 return (
   <div
@@ -815,6 +863,16 @@ const addFreeBlock = () => {
     setSelectedBlocks(template.blocks);
     autoArrange(template.blocks);
   };
+  const deleteSelectedFreeBlock = () => {
+  if (freeBlocks.length <= 1) return;
+
+  const remainingBlocks = freeBlocks.filter(
+    (block) => block.id !== selectedFreeBlockId
+  );
+
+  setFreeBlocks(remainingBlocks);
+  setSelectedFreeBlockId(remainingBlocks[0].id);
+};
 const preventOverlap = (id: BlockId, x: number, y: number) => {
   const gridSize = 30;
 
@@ -1175,6 +1233,17 @@ const renderBlockCanvas = (
         titleSize={freeBlock.titleSize}
         lineColor={theme.line}
       />
+      <FreeBlockResizeHandle
+        freeBlock={freeBlock}
+        theme={theme}
+        onResize={(id, width, height) => {
+          setFreeBlocks((previous) =>
+            previous.map((block) =>
+              block.id === id ? { ...block, width, height } : block
+            )
+          );
+        }}
+      />
     </motion.div>
   );
 })}
@@ -1467,6 +1536,14 @@ const deleteTemplate = (name: string) => {
   className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
 >
   + 자유 블록 추가
+</button>
+<button
+  type="button"
+  onClick={deleteSelectedFreeBlock}
+  disabled={freeBlocks.length <= 1}
+  className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+>
+  선택한 자유 블록 삭제
 </button>
 <div className="mt-2 text-center text-xs text-neutral-500">
   자유 블록 수: {freeBlocks.length}
