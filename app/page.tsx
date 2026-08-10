@@ -688,7 +688,9 @@ const currentPageSize =
   pageSizeMap[
     pageSize as keyof typeof pageSizeMap
   ];
-
+const selectedFreeBlock =
+  freeBlocks.find((block) => block.id === selectedFreeBlockId) ??
+  freeBlocks[0];
 
 useEffect(() => {
   const saved = window.localStorage.getItem("diary-lab-save");
@@ -1151,9 +1153,18 @@ const renderBlockCanvas = (
       }}
       className="absolute cursor-grab active:cursor-grabbing"
       style={{
-        width: layout.width,
-        height: layout.height,
-      }}
+  width: layout.width,
+  height: layout.height,
+  outline:
+    selectedFreeBlockId === freeBlock.id
+      ? "2px solid #171717"
+      : "none",
+  outlineOffset: 3,
+  zIndex:
+    selectedFreeBlockId === freeBlock.id
+      ? 20
+      : 1,
+}}
       onClick={() => setSelectedFreeBlockId(freeBlock.id)}
     >
       <FreeBlock
@@ -1399,7 +1410,7 @@ const deleteTemplate = (name: string) => {
                 </section>
                 <section>
   <FreeBlockSettings
-    title={freeBlocks[0].title}
+    title={selectedFreeBlock.title}
     onTitleChange={(title) =>
       setFreeBlocks((previous) =>
         previous.map((block) =>
@@ -1409,7 +1420,7 @@ const deleteTemplate = (name: string) => {
         )
       )
     }
-    titleAlign={freeBlocks[0].titleAlign}
+    titleAlign={selectedFreeBlock.titleAlign}
     onTitleAlignChange={(titleAlign) =>
       setFreeBlocks((previous) =>
         previous.map((block) =>
@@ -1419,7 +1430,7 @@ const deleteTemplate = (name: string) => {
         )
       )
     }
-    titleSize={freeBlocks[0].titleSize}
+    titleSize={selectedFreeBlock.titleSize}
     onTitleSizeChange={(titleSize) =>
       setFreeBlocks((previous) =>
         previous.map((block) =>
@@ -1429,7 +1440,7 @@ const deleteTemplate = (name: string) => {
         )
       )
     }
-    rowCount={freeBlocks[0].rowCount}
+    rowCount={selectedFreeBlock.rowCount}
     onRowCountChange={(rowCount) =>
       setFreeBlocks((previous) =>
         previous.map((block) =>
@@ -1439,7 +1450,7 @@ const deleteTemplate = (name: string) => {
         )
       )
     }
-    showCheckbox={freeBlocks[0].showCheckbox}
+    showCheckbox={selectedFreeBlock.showCheckbox}
     onShowCheckboxChange={(showCheckbox) =>
       setFreeBlocks((previous) =>
         previous.map((block) =>
