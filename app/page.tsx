@@ -631,21 +631,37 @@ return (
   </div>
 );
 }
+type FreeBlockItem = {
+  id: string;
+  title: string;
+  rowCount: number;
+  showCheckbox: boolean;
+  titleAlign: "left" | "center" | "right";
+  titleSize: number;
+
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 export default function DiaryMakerSite() {
   const [plannerType, setPlannerType] = useState("데일리");
   const [pageSize, setPageSize] = useState("A5");
   const [style, setStyle] = useState("미니멀");
-  const [freeBlocks, setFreeBlocks] = useState([
+const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
   {
     id: "free-1",
     title: "자유 블록",
     rowCount: 5,
     showCheckbox: true,
-    titleAlign: "left" as const,
+    titleAlign: "left",
     titleSize: 16,
+    x: 20,
+    y: 20,
+    width: 240,
+    height: 180,
   },
 ]);
-
 const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("minimal");
   const [printMargin, setPrintMargin] = useState<MarginKey>("normal");
@@ -761,7 +777,28 @@ const autoArrange = (targetBlocks = selectedBlocks) => {
     return next;
   });
 };
+const addFreeBlock = () => {
+  const newId = `free-${Date.now()}`;
 
+  setFreeBlocks((previous) => [
+    ...previous,
+    {
+      id: newId,
+      title: "새 자유 블록",
+      rowCount: 5,
+      showCheckbox: true,
+      titleAlign: "left" as const,
+      titleSize: 16,
+
+      x: 20,
+      y: 20,
+      width: 240,
+      height: 180,
+    },
+  ]);
+
+  setSelectedFreeBlockId(newId);
+};
   const toggleBlock = (id: BlockId) => {
     setSelectedBlocks((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [id, ...prev];
@@ -1072,6 +1109,64 @@ const renderBlockCanvas = (
         </motion.div>
       );
     })}
+{freeBlocks.map((freeBlock) => {
+  const layout = freeBlock;
+
+  return (
+    <motion.div
+      key={freeBlock.id}
+      drag
+      dragConstraints="parent"
+      dragMomentum={false}
+      dragElastic={0}
+      initial={false}
+      animate={{
+        x: layout.x,
+        y: layout.y,
+      }}
+      onDragEnd={(_, info) => {
+        const gridSize = 30;
+
+        const nextX =
+          Math.round(
+            (freeBlock.x + info.offset.x) / gridSize
+          ) * gridSize;
+
+        const nextY =
+          Math.round(
+            (freeBlock.y + info.offset.y) / gridSize
+          ) * gridSize;
+
+        setFreeBlocks((previous) =>
+          previous.map((block) =>
+            block.id === freeBlock.id
+              ? {
+                  ...block,
+                  x: nextX,
+                  y: nextY,
+                }
+              : block
+          )
+        );
+      }}
+      className="absolute cursor-grab active:cursor-grabbing"
+      style={{
+        width: layout.width,
+        height: layout.height,
+      }}
+      onClick={() => setSelectedFreeBlockId(freeBlock.id)}
+    >
+      <FreeBlock
+        title={freeBlock.title}
+        rowCount={freeBlock.rowCount}
+        showCheckbox={freeBlock.showCheckbox}
+        titleAlign={freeBlock.titleAlign}
+        titleSize={freeBlock.titleSize}
+        lineColor={theme.line}
+      />
+    </motion.div>
+  );
+})}
   </div>
 );
   return (
@@ -1216,38 +1311,6 @@ const deleteTemplate = (name: string) => {
         </section>
         
         <section id="maker" className="mx-auto max-w-7xl px-6 py-16">
-          <div className="mb-8 text-center">
-            <p className="text-sm font-bold text-neutral-500">DIARY MAKER</p>
-            <h2 className="mt-2 text-2xl font-black md:text-xl">나만의 양식 만들기</h2>
-          </div>
-
-          <section className="no-print mb-8 rounded-3xl bg-white p-6 shadow-sm">
-            <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
-              <div>
-                <h3 className="text-2xl font-black">추천 위클리 템플릿</h3>
-                <p className="mt-2 text-neutral-600">목적을 고르면 알맞은 하위 항목이 자동으로 생성됩니다.</p>
-              </div>
-              <div className="flex gap-2">
-                {Object.entries(weeklyTemplates).map(([key, category]) => (
-                  <button key={key} onClick={() => setSelectedCategory(key as WeeklyCategory)} className={`rounded-2xl border px-4 py-2 text-sm ${selectedCategory === key ? "bg-black text-white" : "bg-white"}`}>{category.label}</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {weeklyTemplates[selectedCategory].templates.map((template) => (
-                <div key={template.id} className={`rounded-3xl border p-4 ${selectedTemplate === template.id ? "border-black bg-neutral-50" : "bg-white"}`}>
-                  <TemplateThumbnail blocks={template.blocks} theme={theme} />
-                  <h4 className="text-lg font-black">{template.label}</h4>
-                  <p className="mt-1 min-h-[48px] text-sm leading-6 text-neutral-600">{template.description}</p>
-                  <div className="my-4 flex flex-wrap gap-2">
-                    {template.blocks.map((block) => <span key={block} className="rounded-full px-3 py-1 text-xs" style={{ backgroundColor: theme.soft, color: theme.accent }}>{blockLabelMap[block]}</span>)}
-                  </div>
-                  <Button onClick={() => applyTemplate(template)} className="w-full rounded-2xl">이 템플릿 사용하기</Button>
-                </div>
-              ))}
-            </div>
-          </section>
 
           <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
             <Card className="no-print min-w-0 overflow-hidden rounded-3xl border-0 bg-white shadow-sm">
@@ -1256,6 +1319,7 @@ const deleteTemplate = (name: string) => {
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CalendarDays className="h-5 w-5" /> 종류</h3>
                   <div className="grid grid-cols-3 gap-2">{typeOptions.map((type) => <button key={type} onClick={() => setPlannerType(type)} className={`rounded-2xl border px-3 py-3 text-sm ${plannerType === type ? "border-neutral-900 bg-neutral-900 text-white" : "bg-white"}`}>{type}</button>)}</div>
                 </section>
+                
 
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><LayoutTemplate className="h-5 w-5" /> 사이즈</h3>
@@ -1273,6 +1337,7 @@ const deleteTemplate = (name: string) => {
                     ))}
                   </div>
                 </section>
+                
 
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><Printer className="h-5 w-5" /> 인쇄 여백</h3>
@@ -1332,6 +1397,86 @@ const deleteTemplate = (name: string) => {
                     ))}
                   </div>
                 </section>
+                <section>
+  <FreeBlockSettings
+    title={freeBlocks[0].title}
+    onTitleChange={(title) =>
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, title }
+            : block
+        )
+      )
+    }
+    titleAlign={freeBlocks[0].titleAlign}
+    onTitleAlignChange={(titleAlign) =>
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, titleAlign }
+            : block
+        )
+      )
+    }
+    titleSize={freeBlocks[0].titleSize}
+    onTitleSizeChange={(titleSize) =>
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, titleSize }
+            : block
+        )
+      )
+    }
+    rowCount={freeBlocks[0].rowCount}
+    onRowCountChange={(rowCount) =>
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, rowCount }
+            : block
+        )
+      )
+    }
+    showCheckbox={freeBlocks[0].showCheckbox}
+    onShowCheckboxChange={(showCheckbox) =>
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, showCheckbox }
+            : block
+        )
+      )
+    }
+  />
+<button
+  type="button"
+  onClick={addFreeBlock}
+  className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+>
+  + 자유 블록 추가
+</button>
+<div className="mt-2 text-center text-xs text-neutral-500">
+  자유 블록 수: {freeBlocks.length}
+</div>
+<div className="mt-3 space-y-2">
+  {freeBlocks.map((block, index) => (
+    <button
+      key={block.id}
+      type="button"
+      onClick={() => setSelectedFreeBlockId(block.id)}
+      className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
+        selectedFreeBlockId === block.id
+          ? "border-neutral-900 bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      자유 블록 {index + 1} · {block.title}
+    </button>
+  ))}
+</div>
+</section>
 <section>
   <h3 className="mb-3 text-lg font-black">
     템플릿 저장
