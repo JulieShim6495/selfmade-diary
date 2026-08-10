@@ -757,6 +757,11 @@ useEffect(() => {
     setPrintMargin(data.printMargin ?? "normal");
     setSelectedBlocks(data.selectedBlocks ?? []);
     setBlockLayouts(data.blockLayouts ?? {});
+
+    setFreeBlocks(data.freeBlocks ?? freeBlocks);
+setSelectedFreeBlockId(
+  data.freeBlocks?.[0]?.id ?? "free-1"
+);
   } catch (error) {
     console.error(error);
   }
@@ -964,6 +969,7 @@ const savePlanner = () => {
       selectedTemplate,
       selectedBlocks,
       blockLayouts,
+      freeBlocks,
     })
   );
 
@@ -985,6 +991,7 @@ useEffect(() => {
       selectedTemplate,
       selectedBlocks,
       blockLayouts,
+      freeBlocks,
     })
   );
 }, [
@@ -998,6 +1005,7 @@ useEffect(() => {
   selectedTemplate,
   selectedBlocks,
   blockLayouts,
+  freeBlocks,
 ]);
 const saveTemplate = () => {
   if (!templateName.trim()) {
