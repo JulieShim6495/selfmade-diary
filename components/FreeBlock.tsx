@@ -5,7 +5,7 @@ type FreeBlockProps = {
   rowCount: number;
   showCheckbox: boolean;
   lineColor: string;
-  titleAlign: "left" | "center";
+  titleAlign: "left" | "center" | "right";
   titleSize: number;
 };
 
@@ -20,7 +20,16 @@ export default function FreeBlock({
 {
   return (
     <div className="h-full">
-      <h3 className={`mb-4 font-bold ${titleAlign === "center" ? "text-center" : "text-left"}`} style={{ fontSize: `${titleSize}px` }}>
+      <h3
+  className={`mb-4 font-bold ${
+    titleAlign === "center"
+      ? "text-center"
+      : titleAlign === "right"
+        ? "text-right"
+        : "text-left"
+  }`}
+  style={{ fontSize: `${titleSize}px` }}
+>
         {title}
       </h3>
 

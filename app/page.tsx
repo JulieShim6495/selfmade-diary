@@ -24,28 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import FreeBlock from "@/components/FreeBlock";
 import FreeBlockSettings from "@/components/FreeBlockSettings";
 
-type BlockId =
-  | "goal"
-  | "todo"
-  | "schedule"
-  | "memo"
-  | "habit"
-  | "mood"
-  | "meal"
-  | "expense"
-  | "gratitude"
-  | "weeklyGoal"
-  | "weeklyTodo"
-  | "subjectPlan"
-  | "studyTime"
-  | "wrongAnswer"
-  | "meetingMemo"
-  | "deadline"
-  | "nextWeek"
-  | "weeklyReview"
-  | "mealPlan"
-  | "exercise"
-  | "moodTracker";
+type BlockId = "schedule"
 
 type BlockLayout = {
   x: number;
@@ -66,41 +45,8 @@ type WeeklyTemplate = {
 };
 
 const blockOptions: { id: BlockId; label: string }[] = [
-  { id: "goal", label: "목표" },
-  { id: "todo", label: "할 일" },
   { id: "schedule", label: "시간표" },
-  { id: "memo", label: "메모" },
-  { id: "habit", label: "습관 체크" },
-  { id: "mood", label: "기분 기록" },
-  { id: "meal", label: "식단 기록" },
-  { id: "expense", label: "소비 기록" },
-  { id: "gratitude", label: "감사 일기" },
-  { id: "weeklyGoal", label: "주간 목표" },
-  { id: "weeklyTodo", label: "주간 할 일" },
-  { id: "subjectPlan", label: "과목별 계획" },
-  { id: "studyTime", label: "공부 시간 기록" },
-  { id: "wrongAnswer", label: "오답 체크" },
-  { id: "meetingMemo", label: "회의 메모" },
-  { id: "deadline", label: "마감 일정" },
-  { id: "nextWeek", label: "다음 주 준비" },
-  { id: "weeklyReview", label: "주간 회고" },
-  { id: "mealPlan", label: "식단 계획" },
-  { id: "exercise", label: "운동 기록" },
-  { id: "moodTracker", label: "감정 기록" },
 ];
-const freeBlockLegacyIds: BlockId[] = [
-  "goal",
-  "todo",
-  "memo",
-  "weeklyGoal",
-  "weeklyTodo",
-  "meetingMemo",
-  "nextWeek",
-];
-
-const visibleBlockOptions = blockOptions.filter(
-  (block) => !freeBlockLegacyIds.includes(block.id)
-);
 const blockLabelMap = Object.fromEntries(
   blockOptions.map((block) => [block.id, block.label])
 ) as Record<BlockId, string>;
@@ -163,101 +109,8 @@ const marginOptions: Record<MarginKey, { label: string; padding: number; descrip
   wide: { label: "넓게", padding: 48, description: "여백 약 15mm" },
 };
 
-const weeklyTemplates: Record<WeeklyCategory, { label: string; templates: WeeklyTemplate[] }> = {
-  study: {
-    label: "공부용",
-    templates: [
-      {
-        id: "exam",
-        label: "시험 대비형",
-        description: "시험 일정, 과목별 계획, 오답 체크까지 한 번에 관리해요.",
-        blocks: ["weeklyGoal", "subjectPlan", "studyTime", "wrongAnswer", "weeklyReview"],
-      },
-      {
-        id: "study-routine",
-        label: "루틴 관리형",
-        description: "매일 공부 루틴과 습관을 꾸준히 체크하는 구성입니다.",
-        blocks: ["weeklyGoal", "habit", "studyTime", "todo", "weeklyReview"],
-      },
-      {
-        id: "time-study",
-        label: "시간관리형",
-        description: "요일별 공부 시간과 해야 할 일을 한눈에 볼 수 있어요.",
-        blocks: ["weeklyGoal", "schedule", "studyTime", "weeklyTodo", "memo"],
-      },
-    ],
-  },
-  work: {
-    label: "업무용",
-    templates: [
-      {
-        id: "project",
-        label: "프로젝트 관리형",
-        description: "마감 일정과 이번 주 업무 우선순위를 정리하는 구성입니다.",
-        blocks: ["weeklyGoal", "weeklyTodo", "meetingMemo", "deadline", "nextWeek"],
-      },
-      {
-        id: "meeting",
-        label: "회의 중심형",
-        description: "회의 메모, 연락할 일, 후속 업무 정리에 좋아요.",
-        blocks: ["weeklyGoal", "meetingMemo", "weeklyTodo", "memo", "nextWeek"],
-      },
-      {
-        id: "focus-work",
-        label: "목표 달성형",
-        description: "주간 목표와 핵심 업무를 끝까지 밀고 가는 구성입니다.",
-        blocks: ["weeklyGoal", "weeklyTodo", "deadline", "habit", "weeklyReview"],
-      },
-    ],
-  },
-  life: {
-    label: "생활관리용",
-    templates: [
-      {
-        id: "health",
-        label: "건강관리형",
-        description: "식단, 운동, 습관을 같이 기록하기 좋은 구성입니다.",
-        blocks: ["weeklyGoal", "exercise", "mealPlan", "habit", "weeklyReview"],
-      },
-      {
-        id: "mood-life",
-        label: "감정기록형",
-        description: "기분 변화와 한 주 회고를 중심으로 기록해요.",
-        blocks: ["weeklyGoal", "moodTracker", "gratitude", "memo", "weeklyReview"],
-      },
-      {
-        id: "home-routine",
-        label: "습관관리형",
-        description: "청소, 정리, 운동, 독서 같은 생활 루틴에 적합합니다.",
-        blocks: ["weeklyGoal", "habit", "weeklyTodo", "expense", "weeklyReview"],
-      },
-    ],
-  },
-};
-
 const defaultLayouts: Record<BlockId, BlockLayout> = {
-  goal: { x: 0, y: 0, width: 300, height: 150 },
-  todo: { x: 330, y: 0, width: 300, height: 190 },
-  schedule: { x: 0, y: 180, width: 300, height: 300 },
-  memo: { x: 330, y: 220, width: 300, height: 220 },
-  habit: { x: 0, y: 450, width: 300, height: 180 },
-  mood: { x: 330, y: 470, width: 300, height: 170 },
-  meal: { x: 0, y: 660, width: 300, height: 170 },
-  expense: { x: 330, y: 670, width: 300, height: 170 },
-  gratitude: { x: 165, y: 860, width: 300, height: 170 },
-  weeklyGoal: { x: 0, y: 0, width: 300, height: 150 },
-  weeklyTodo: { x: 330, y: 0, width: 300, height: 190 },
-  subjectPlan: { x: 0, y: 180, width: 300, height: 220 },
-  studyTime: { x: 330, y: 220, width: 300, height: 300 },
-  wrongAnswer: { x: 0, y: 430, width: 300, height: 180 },
-  meetingMemo: { x: 0, y: 180, width: 300, height: 220 },
-  deadline: { x: 330, y: 220, width: 300, height: 180 },
-  nextWeek: { x: 330, y: 430, width: 300, height: 180 },
-  weeklyReview: { x: 165, y: 650, width: 300, height: 190 },
-  mealPlan: { x: 330, y: 220, width: 300, height: 180 },
-  exercise: { x: 0, y: 180, width: 300, height: 180 },
-  moodTracker: { x: 0, y: 180, width: 300, height: 180 },
-};
+  schedule: { x: 0, y: 180, width: 300, height: 300 },};
 
 const autoLayoutPositions: BlockLayout[] = [
   { x: 0, y: 0, width: 300, height: 160 },
@@ -270,23 +123,6 @@ const autoLayoutPositions: BlockLayout[] = [
   { x: 330, y: 730, width: 300, height: 190 },
   { x: 165, y: 960, width: 300, height: 190 },
 ];
-const addFreeBlock = () => {
-  const newId = `free-${Date.now()}`;
-
-  setFreeBlocks((previous) => [
-    ...previous,
-    {
-      id: newId,
-      title: "새 자유 블록",
-      rowCount: 5,
-      showCheckbox: true,
-      titleAlign: "left",
-      titleSize: 16,
-    },
-  ]);
-
-  setSelectedFreeBlockId(newId);
-};
 function TemplateThumbnail({ blocks, theme }: { blocks: BlockId[]; theme: typeof themes[ThemeKey] }) {
   return (
     <div className="mb-3 h-28 rounded-2xl border p-2" style={{ backgroundColor: theme.page, borderColor: theme.line }}>
@@ -508,79 +344,7 @@ function PreviewBlock({
     borderColor: theme.line,
   };
   const baseClass = "h-full overflow-hidden rounded-2xl border p-4 shadow-sm";
-if (id === "goal" || id === "weeklyGoal") {
-  return (
-    <div className={`${baseClass} relative`} style={baseStyle}>
-      <BlockHeader
-        id={id}
-        label={label}
-        theme={theme}
-        onSizeChange={onSizeChange}
-      />
-
-      <div className="space-y-4">
-        {[1, 2].map((line) => (
-          <div
-            key={line}
-            style={{
-              height: "20px",
-              borderBottom: `1px solid ${theme.line}`,
-            }}
-          />
-        ))}
-      </div>
-
-      <ResizeHandle
-        id={id}
-        layout={layout}
-        theme={theme}
-        onResize={onResize}
-      />
-    </div>
-  );
-}
-if (id === "todo" || id === "weeklyTodo") {
-  const todoRowCount = Math.max(
-    4,
-    Math.floor((layout.height - 55) / 28)
-  );
-
-  return (
-    <div className={`${baseClass} relative`} style={baseStyle}>
-      <BlockHeader
-        id={id}
-        label={label}
-        theme={theme}
-        onSizeChange={onSizeChange}
-      />
-
-      {Array.from({ length: todoRowCount }).map((_, n) => (
-        <div key={n} className="mb-2 flex items-center gap-3">
-          <span
-            className="h-4 w-4 rounded-md border"
-            style={{ borderColor: theme.line }}
-          />
-
-          <div
-            className="flex-1"
-            style={{
-              borderBottom: `1px solid ${theme.line}`,
-              height: "18px",
-            }}
-          />
-        </div>
-      ))}
-
-      <ResizeHandle
-        id={id}
-        layout={layout}
-        theme={theme}
-        onResize={onResize}
-      />
-    </div>
-  );
-}
-  if (id === "schedule" || id === "studyTime") {
+  if (id === "schedule") {
     return (
       <div className={`${baseClass} relative`} style={baseStyle}>
         <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
@@ -599,63 +363,6 @@ if (id === "todo" || id === "weeklyTodo") {
     );
   }
 
-  if (id === "habit") {
-    return (
-      <div className={`${baseClass} relative`} style={baseStyle}>
-        <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-500">
-          {["월", "화", "수", "목", "금", "토", "일"].map((d) => <span key={d}>{d}</span>)}
-          {Array.from({ length: 21 }).map((_, i) => <span key={i} className="h-6 rounded-md border" style={{ borderColor: theme.line }} />)}
-        </div>
-        <ResizeHandle
-  id={id}
-  layout={layout}
-  theme={theme}
-  onResize={onResize}
-/>
-      </div>
-    );
-  }
-
-  if (id === "expense" || id === "deadline" || id === "subjectPlan") {
-    const rows = id === "subjectPlan" ? ["국어", "수학", "영어", "탐구"] : ["항목", "일정", "메모"];
-    return (
-      <div className={`${baseClass} relative`} style={baseStyle}>
-        <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        {rows.map((item) => (
-          <div key={item} className="grid grid-cols-[70px_1fr] border-t py-2 text-sm" style={{ borderColor: theme.line }}>
-            <span className="text-neutral-400">{item}</span>
-            <span className="text-neutral-300">작성</span>
-          </div>
-        ))}
-        <ResizeHandle
-  id={id}
-  layout={layout}
-  theme={theme}
-  onResize={onResize}
-/>
-      </div>
-    );
-  }
-
-  if (id === "mealPlan" || id === "exercise" || id === "moodTracker") {
-    const days = ["월", "화", "수", "목", "금", "토", "일"];
-    return (
-      <div className={`${baseClass} relative`} style={baseStyle}>
-        <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-neutral-500">
-          {days.map((day) => <span key={day}>{day}</span>)}
-          {days.map((day) => <span key={`${day}-box`} className="h-12 rounded-md border" style={{ borderColor: theme.line }} />)}
-        </div>
-        <ResizeHandle
-  id={id}
-  layout={layout}
-  theme={theme}
-  onResize={onResize}
-/>
-      </div>
-    );
-  }
 const noteLineCount = Math.max(
   3,
   Math.floor((layout.height - 58) / 24)
@@ -723,6 +430,28 @@ const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
   },
 ]);
 const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
+const addFreeBlock = () => {
+  const newId = `free-${Date.now()}`;
+  const index = freeBlocks.length;
+
+  setFreeBlocks((previous) => [
+    ...previous,
+    {
+      id: newId,
+      title: "새 자유 블록",
+      rowCount: 5,
+      showCheckbox: true,
+      titleAlign: "left",
+      titleSize: 16,
+      x: 20 + (index % 2) * 260,
+      y: 20 + Math.floor(index / 2) * 200,
+      width: 240,
+      height: 180,
+    },
+  ]);
+
+  setSelectedFreeBlockId(newId);
+};
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("minimal");
   const [printMargin, setPrintMargin] = useState<MarginKey>("normal");
   const [selectedCategory, setSelectedCategory] = useState<WeeklyCategory>("study");
@@ -836,28 +565,6 @@ const autoArrange = (targetBlocks = selectedBlocks) => {
     return next;
   });
 };
-const addFreeBlock = () => {
-  const newId = `free-${Date.now()}`;
-  const index = freeBlocks.length;
-  setFreeBlocks((previous) => [
-    ...previous,
-    {
-      id: newId,
-      title: "새 자유 블록",
-      rowCount: 5,
-      showCheckbox: true,
-      titleAlign: "left" as const,
-      titleSize: 16,
-
-      x: 20 + (index % 2) * 260,
-      y: 20+ Math.floor(index / 2) * 200,
-      width: 240,
-      height: 180,
-    },
-  ]);
-
-  setSelectedFreeBlockId(newId);
-};
 
   const toggleBlock = (id: BlockId) => {
     setSelectedBlocks((prev) => {
@@ -907,51 +614,6 @@ const duplicateSelectedFreeBlock = () => {
   ]);
 
   setSelectedFreeBlockId(newId);
-};
-const preventOverlap = (id: BlockId, x: number, y: number) => {
-  const gridSize = 30;
-
-  const current = blockLayouts[id];
-
-  if (!current) return { x, y };
-
-  let nextX = Math.max(0, x);
-  let nextY = Math.max(0, y);
-
-  let moved = true;
-  let count = 0;
-
-  while (moved && count < 10) {
-    moved = false;
-
-    selectedBlocks.forEach((otherId) => {
-      if (otherId === id) return;
-
-      const other = blockLayouts[otherId];
-
-      if (!other) return;
-
-      const isOverlapping =
-        nextX < other.x + other.width &&
-        nextX + current.width > other.x &&
-        nextY < other.y + other.height &&
-        nextY + current.height > other.y;
-
-      if (isOverlapping) {
-        nextY =
-          Math.round(
-            (other.y + other.height + gridSize) /
-              gridSize
-          ) * gridSize;
-
-        moved = true;
-      }
-    });
-
-    count += 1;
-  }
-
-  return { x: nextX, y: nextY };
 };
 const preventFreeBlockOverlap = (
   id: string,
@@ -1192,7 +854,6 @@ const renderBlockCanvas = (
         <motion.div
           key={`${pageKey}-${block.id}`}
           drag
-          dragConstraints="parent"
           dragMomentum={false}
           dragElastic={0}
           initial={false}
@@ -1245,7 +906,6 @@ const renderBlockCanvas = (
     <motion.div
       key={freeBlock.id}
       drag
-      dragConstraints="parent"
       dragMomentum={false}
       dragElastic={0}
       initial={false}
@@ -1542,7 +1202,7 @@ const deleteTemplate = (name: string) => {
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CheckSquare className="h-5 w-5" /> 넣을 항목</h3>
                   <div className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
-                    {visibleBlockOptions.map((block) => (
+                    {blockOptions.map((block) => (
                       <label key={block.id} className="flex cursor-pointer items-center justify-between rounded-2xl border bg-white px-4 py-3">
                         <span>{block.label}</span>
                         <input type="checkbox" checked={selectedBlocks.includes(block.id)} onChange={() => toggleBlock(block.id)} className="h-5 w-5 accent-neutral-900" />

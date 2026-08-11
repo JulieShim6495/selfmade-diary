@@ -7,7 +7,7 @@ type FreeBlockSettingsProps = {
   onTitleChange: (title: string) => void;
 
   titleAlign: TitleAlign;
-  onTitleAlignChange: (align: TitleAlign) => void;
+  onTitleAlignChange: (value: TitleAlign) => void;
 
   titleSize: number;
   onTitleSizeChange: (size: number) => void;
@@ -91,6 +91,17 @@ export default function FreeBlockSettings({
           >
             가운데
           </button>
+                <button
+        type="button"
+        onClick={() => onTitleAlignChange("right")}
+        className={`rounded-lg border px-3 py-2 text-sm ${
+          titleAlign === "right"
+            ? "bg-neutral-900 text-white"
+            : "bg-white"
+        }`}
+      >
+        오른쪽
+      </button>
         </div>
       </div>
 
