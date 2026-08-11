@@ -88,7 +88,19 @@ const blockOptions: { id: BlockId; label: string }[] = [
   { id: "exercise", label: "운동 기록" },
   { id: "moodTracker", label: "감정 기록" },
 ];
+const freeBlockLegacyIds: BlockId[] = [
+  "goal",
+  "todo",
+  "memo",
+  "weeklyGoal",
+  "weeklyTodo",
+  "meetingMemo",
+  "nextWeek",
+];
 
+const visibleBlockOptions = blockOptions.filter(
+  (block) => !freeBlockLegacyIds.includes(block.id)
+);
 const blockLabelMap = Object.fromEntries(
   blockOptions.map((block) => [block.id, block.label])
 ) as Record<BlockId, string>;
@@ -716,7 +728,9 @@ const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
   const [selectedCategory, setSelectedCategory] = useState<WeeklyCategory>("study");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
-  const [selectedBlocks, setSelectedBlocks] = useState<BlockId[]>(["goal", "todo", "schedule", "memo"]);
+  const [selectedBlocks, setSelectedBlocks] = useState<BlockId[]>([
+  "schedule",
+]);
   const [savedTemplates, setSavedTemplates] =
   useState<any[]>([]);
   const [templateName, setTemplateName] =
@@ -778,16 +792,6 @@ useEffect(() => {
     () => selectedBlocks.map((id) => blockOptions.find((block) => block.id === id)).filter((block): block is { id: BlockId; label: string } => Boolean(block)),
     [selectedBlocks]
   );
-
-  const sortedBlockOptions = useMemo(() => {
-    const selected = selectedBlocks
-      .map((id) => blockOptions.find((block) => block.id === id))
-      .filter((block): block is { id: BlockId; label: string } => Boolean(block));
-
-    const unselected = blockOptions.filter((block) => !selectedBlocks.includes(block.id));
-
-    return [...selected, ...unselected];
-  }, [selectedBlocks]);
 
 const autoArrange = (targetBlocks = selectedBlocks) => {
   setBlockLayouts((prev) => {
@@ -1501,7 +1505,7 @@ const deleteTemplate = (name: string) => {
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CheckSquare className="h-5 w-5" /> 넣을 항목</h3>
                   <div className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
-                    {sortedBlockOptions.map((block) => (
+                    {visibleBlockOptions.map((block) => (
                       <label key={block.id} className="flex cursor-pointer items-center justify-between rounded-2xl border bg-white px-4 py-3">
                         <span>{block.label}</span>
                         <input type="checkbox" checked={selectedBlocks.includes(block.id)} onChange={() => toggleBlock(block.id)} className="h-5 w-5 accent-neutral-900" />
@@ -1510,6 +1514,11 @@ const deleteTemplate = (name: string) => {
                   </div>
                 </section>
                 <section>
+<section className="border-t pt-6">
+  <h3 className="mb-3 text-lg font-black">
+    자유 블록
+  </h3>
+
   <FreeBlockSettings
     title={selectedFreeBlock.title}
     onTitleChange={(title) =>
@@ -1562,31 +1571,36 @@ const deleteTemplate = (name: string) => {
       )
     }
   />
-<button
-  type="button"
-  onClick={addFreeBlock}
-  className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
->
-  + 자유 블록 추가
-</button>
-<button
-  type="button"
-  onClick={duplicateSelectedFreeBlock}
-  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
->
-  선택한 자유 블록 복제
-</button>
-<button
-  type="button"
-  onClick={deleteSelectedFreeBlock}
-  disabled={freeBlocks.length <= 1}
-  className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
->
-  선택한 자유 블록 삭제
-</button>
-<div className="mt-2 text-center text-xs text-neutral-500">
-  자유 블록 수: {freeBlocks.length}
-</div>
+
+  <button
+    type="button"
+    onClick={addFreeBlock}
+    className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+  >
+    + 자유 블록 추가
+  </button>
+
+  <button
+    type="button"
+    onClick={duplicateSelectedFreeBlock}
+    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+  >
+    선택한 자유 블록 복제
+  </button>
+
+  <button
+    type="button"
+    onClick={deleteSelectedFreeBlock}
+    disabled={freeBlocks.length <= 1}
+    className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    선택한 자유 블록 삭제
+  </button>
+
+  <div className="mt-2 text-center text-xs text-neutral-500">
+    자유 블록 수: {freeBlocks.length}
+  </div>
+</section>
 <div className="mt-3 space-y-2">
   {freeBlocks.map((block, index) => (
     <button
