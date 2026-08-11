@@ -953,6 +953,37 @@ const preventOverlap = (id: BlockId, x: number, y: number) => {
 
   return { x: nextX, y: nextY };
 };
+const preventFreeBlockOverlap = (
+  id: string,
+  x: number,
+  y: number
+) => {
+  const current = freeBlocks.find(
+    (block) => block.id === id
+  );
+
+  if (!current) return { x, y };
+
+  const isOverlapping = freeBlocks.some((other) => {
+    if (other.id === id) return false;
+
+    return (
+      x < other.x + other.width &&
+      x + current.width > other.x &&
+      y < other.y + other.height &&
+      y + current.height > other.y
+    );
+  });
+
+  if (isOverlapping) {
+    return {
+      x: current.x,
+      y: current.y,
+    };
+  }
+
+  return { x, y };
+};
   const updateBlockPosition = (id: BlockId, x: number, y: number) => {
     setBlockLayouts((prev) => ({ ...prev, [id]: { ...prev[id], x, y } }));
   };
@@ -1225,27 +1256,33 @@ const renderBlockCanvas = (
       onDragEnd={(_, info) => {
         const gridSize = 30;
 
-        const nextX =
-          Math.round(
-            (freeBlock.x + info.offset.x) / gridSize
-          ) * gridSize;
+const nextX =
+  Math.round(
+    (freeBlock.x + info.offset.x) / gridSize
+  ) * gridSize;
 
-        const nextY =
-          Math.round(
-            (freeBlock.y + info.offset.y) / gridSize
-          ) * gridSize;
+const nextY =
+  Math.round(
+    (freeBlock.y + info.offset.y) / gridSize
+  ) * gridSize;
 
-        setFreeBlocks((previous) =>
-          previous.map((block) =>
-            block.id === freeBlock.id
-              ? {
-                  ...block,
-                  x: nextX,
-                  y: nextY,
-                }
-              : block
-          )
-        );
+const safePosition = preventFreeBlockOverlap(
+  freeBlock.id,
+  nextX,
+  nextY
+);
+
+setFreeBlocks((previous) =>
+  previous.map((block) =>
+    block.id === freeBlock.id
+      ? {
+          ...block,
+          x: safePosition.x,
+          y: safePosition.y,
+        }
+      : block
+  )
+);
       }}
       className="absolute cursor-grab active:cursor-grabbing"
       style={{
