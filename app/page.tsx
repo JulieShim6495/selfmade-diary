@@ -624,20 +624,74 @@ const preventFreeBlockOverlap = (
     (block) => block.id === id
   );
 
-  if (!current) return { x, y };
+  if (!current) {
+    return { x, y };
+  }
 
-  const isOverlapping = freeBlocks.some((other) => {
-    if (other.id === id) return false;
+  const currentElement = document.querySelector(
+    `[data-free-block-id="${id}"]`
+  );
 
-    return (
-      x < other.x + other.width &&
-      x + current.width > other.x &&
-      y < other.y + other.height &&
-      y + current.height > other.y
-    );
-  });
+  if (!currentElement) {
+    return { x, y };
+  }
 
-  if (isOverlapping) {
+  const currentRect =
+    currentElement.getBoundingClientRect();
+
+  const offsetX = x - current.x;
+  const offsetY = y - current.y;
+
+  const nextRect = {
+    left: currentRect.left + offsetX,
+    right: currentRect.right + offsetX,
+    top: currentRect.top + offsetY,
+    bottom: currentRect.bottom + offsetY,
+  };
+
+  const overlapsOtherFreeBlock = freeBlocks.some(
+    (other) => {
+      if (other.id === id) return false;
+
+      const otherElement = document.querySelector(
+        `[data-free-block-id="${other.id}"]`
+      );
+
+      if (!otherElement) return false;
+
+      const otherRect =
+        otherElement.getBoundingClientRect();
+
+      return (
+        nextRect.left < otherRect.right &&
+        nextRect.right > otherRect.left &&
+        nextRect.top < otherRect.bottom &&
+        nextRect.bottom > otherRect.top
+      );
+    }
+  );
+
+  const scheduleElement = document.querySelector(
+    `[data-planner-block-id="schedule"]`
+  );
+
+  let overlapsSchedule = false;
+
+  if (scheduleElement) {
+    const scheduleRect =
+      scheduleElement.getBoundingClientRect();
+
+    overlapsSchedule =
+      nextRect.left < scheduleRect.right &&
+      nextRect.right > scheduleRect.left &&
+      nextRect.top < scheduleRect.bottom &&
+      nextRect.bottom > scheduleRect.top;
+  }
+
+  if (
+    overlapsOtherFreeBlock ||
+    overlapsSchedule
+  ) {
     return {
       x: current.x,
       y: current.y,
@@ -646,6 +700,7 @@ const preventFreeBlockOverlap = (
 
   return { x, y };
 };
+
   const updateBlockPosition = (id: BlockId, x: number, y: number) => {
     setBlockLayouts((prev) => ({ ...prev, [id]: { ...prev[id], x, y } }));
   };
@@ -846,13 +901,14 @@ const renderBlockCanvas = (
       borderColor: theme.line,
       backgroundColor: theme.page,
     }}
-  >
-    {pageBlocks.map((block) => {
+    >
+       {pageBlocks.map((block) => {
       const layout = blockLayouts[block.id];
 
       return (
         <motion.div
           key={`${pageKey}-${block.id}`}
+          data-planner-block-id={block.id}
           drag
           dragMomentum={false}
           dragElastic={0}
@@ -861,26 +917,7 @@ const renderBlockCanvas = (
             x: layout.x,
             y: layout.y,
           }}
-          onDragEnd={(_, info) => {
-            const gridSize = 30;
-
-            const nextX =
-              Math.round(
-                (layout.x + info.offset.x) / gridSize
-              ) * gridSize;
-
-            const nextY =
-              Math.round(
-                (layout.y + info.offset.y) / gridSize
-              ) * gridSize;
-
-            updateBlockPosition(
-              block.id,
-              nextX,
-              nextY
-            );
-          }}
-          className="absolute cursor-grab active:cursor-grabbing"
+className="absolute cursor-grab active:cursor-grabbing"
           style={{
             width: layout.width,
             height: layout.height,
@@ -905,6 +942,7 @@ const renderBlockCanvas = (
   return (
     <motion.div
       key={freeBlock.id}
+      data-free-block-id={freeBlock.id}
       drag
       dragMomentum={false}
       dragElastic={0}
@@ -916,44 +954,46 @@ const renderBlockCanvas = (
       onDragEnd={(_, info) => {
         const gridSize = 30;
 
-const nextX =
-  Math.round(
-    (freeBlock.x + info.offset.x) / gridSize
-  ) * gridSize;
+        const nextX =
+          Math.round(
+            (freeBlock.x + info.offset.x) / gridSize
+          ) * gridSize;
 
-const nextY =
-  Math.round(
-    (freeBlock.y + info.offset.y) / gridSize
-  ) * gridSize;
+        const nextY =
+          Math.round(
+            (freeBlock.y + info.offset.y) / gridSize
+          ) * gridSize;
 
-const safePosition = preventFreeBlockOverlap(
-  freeBlock.id,
-  nextX,
-  nextY
-);
+        const safePosition = preventFreeBlockOverlap(
+          freeBlock.id,
+          nextX,
+          nextY
+        );
 
-setFreeBlocks((previous) =>
-  previous.map((block) =>
-    block.id === freeBlock.id
-      ? {
-          ...block,
-          x: safePosition.x,
-          y: safePosition.y,
-        }
-      : block
-  )
-);
+        setFreeBlocks((previous) =>
+          previous.map((block) =>
+            block.id === freeBlock.id
+              ? {
+                  ...block,
+                  x: safePosition.x,
+                  y: safePosition.y,
+                }
+              : block
+          )
+        );
       }}
       className="absolute cursor-grab active:cursor-grabbing"
       style={{
-  width: layout.width,
-  height: layout.height,
-  zIndex:
-    selectedFreeBlockId === freeBlock.id
-      ? 20
-      : 1,
-}}
-      onClick={() => setSelectedFreeBlockId(freeBlock.id)}
+        width: layout.width,
+        height: layout.height,
+        zIndex:
+          selectedFreeBlockId === freeBlock.id
+            ? 20
+            : 1,
+      }}
+      onClick={() =>
+        setSelectedFreeBlockId(freeBlock.id)
+      }
     >
       {selectedFreeBlockId === freeBlock.id && (
   <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
@@ -966,13 +1006,20 @@ setFreeBlocks((previous) =>
         titleSize={freeBlock.titleSize}
         lineColor={theme.line}
       />
+
       <FreeBlockResizeHandle
         freeBlock={freeBlock}
         theme={theme}
         onResize={(id, width, height) => {
           setFreeBlocks((previous) =>
             previous.map((block) =>
-              block.id === id ? { ...block, width, height } : block
+              block.id === id
+                ? {
+                    ...block,
+                    width,
+                    height,
+                  }
+                : block
             )
           );
         }}
@@ -982,8 +1029,9 @@ setFreeBlocks((previous) =>
 })}
   </div>
 );
-  return (
-    <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
+
+return (
+      <div className="min-h-screen bg-[#f7f4ef] text-neutral-900">
 <style>{`
   @page {
     margin: 3mm;

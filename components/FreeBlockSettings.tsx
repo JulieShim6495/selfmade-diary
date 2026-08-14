@@ -1,6 +1,6 @@
 "use client";
 
-type TitleAlign = "left" | "center";
+type TitleAlign = "left" | "center" | "right";
 
 type FreeBlockSettingsProps = {
   title: string;
