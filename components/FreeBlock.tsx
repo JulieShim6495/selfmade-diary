@@ -18,9 +18,12 @@ export default function FreeBlock({
   titleSize,
 }: FreeBlockProps) 
 {
-  return (
-    <div className="h-full">
-      <h3
+return (
+  <div
+    className="h-full rounded-2xl px-4 py-3"
+    style={{ backgroundColor: "#ffffff" }}
+  >
+   <h3
   className={`mb-4 font-bold ${
     titleAlign === "center"
       ? "text-center"

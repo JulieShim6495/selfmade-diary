@@ -59,10 +59,7 @@ const typeOptions = ["데일리", "위클리", "먼슬리"];
 const sizeOptions = ["A4", "A5", "B6", "아이패드용"];
 const styleOptions = ["미니멀", "감성", "업무용", "귀여운"];
 const pageSizeMap = {
-  A4: { width: 760, height: 1075, label: "A4" },
-  A5: { width: 540, height: 760, label: "A5" },
-  B6: { width: 430, height: 610, label: "B6" },
-  아이패드용: { width: 820, height: 1180, label: "iPad" },
+  A4: { width: 760, height: 1075, label: "A4" }
 };
 
 const themes: Record<ThemeKey, { label: string; page: string; block: string; accent: string; soft: string; line: string }> = {
@@ -353,8 +350,8 @@ function PreviewBlock({
   if (id === "schedule") {
     return (
 <div
-  className={`${baseClass} relative border-0 shadow-none`}
-  style={baseStyle}
+  className={`${baseClass} relative`}
+  style={{ ...baseStyle, backgroundColor: "#ffffff" }}
 >
           <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
 <HalfHourScheduleRows
@@ -421,9 +418,12 @@ type FreeBlockItem = {
   height: number;
 };
 export default function DiaryMakerSite() {
+  const pageSize = "A4";
   const [plannerType, setPlannerType] = useState("데일리");
-  const [pageSize, setPageSize] = useState("A5");
   const [style, setStyle] = useState("미니멀");
+  const [gridBackground, setGridBackground] = useState<
+  "none" | "dot" | "line"
+>("none");
   const [selectedSchedule, setSelectedSchedule] = useState(false);
   const [canvasBorderStyle, setCanvasBorderStyle] = useState<
   "dashed" | "solid" | "none"
@@ -455,6 +455,8 @@ const canvas = await html2canvas(element, {
   scale: 3,
   backgroundColor: "#ffffff",
   useCORS: true,
+  height: element.scrollHeight + 4,
+  windowHeight: element.scrollHeight + 4,
   ignoreElements: (el) =>
     el.classList.contains("no-print"),
   onclone: (clonedDocument) => {
@@ -462,7 +464,7 @@ const canvas = await html2canvas(element, {
       clonedDocument.getElementById("print-area");
 
     if (clonedArea) {
-      clonedArea.style.background = "#ffffff";
+      clonedArea.style.backgroundColor = "#ffffff";
       clonedArea.style.boxShadow = "none";
     }
     clonedDocument
@@ -470,19 +472,13 @@ const canvas = await html2canvas(element, {
   .forEach((el) => {
     (el as HTMLElement).style.display = "none";
   });
-    clonedDocument
-      .querySelectorAll(".no-print")
-      .forEach((el) => {
-        (el as HTMLElement).style.display = "none";
-      });
 
-    clonedDocument
-      .querySelectorAll(".planner-page, .planner-canvas")
-      .forEach((el) => {
-        const node = el as HTMLElement;
-        node.style.boxShadow = "none";
-        node.style.background = "#ffffff";
-      });
+clonedDocument
+  .querySelectorAll(".planner-page, .planner-canvas")
+  .forEach((el) => {
+    const node = el as HTMLElement;
+    node.style.backgroundColor = "#ffffff";
+  });
   },
 });
     const blob = await new Promise<Blob>((resolve, reject) => {
@@ -497,42 +493,51 @@ const canvas = await html2canvas(element, {
 
     const imageData = await blob.arrayBuffer();
 
-    const maxWidth = 650;
+    const maxWidth = 760;
     const imageHeight =
       (canvas.height / canvas.width) * maxWidth;
 
-    const doc = new Document({
-      sections: [
-        {
-          properties: {
-            page: {
-              margin: {
-                top: 360,
-                right: 360,
-                bottom: 360,
-                left: 360,
-              },
-            },
+const doc = new Document({
+  sections: [
+    {
+      properties: {
+        page: {
+          size: {
+            width: 11906,
+            height: 16838,
+          },
+          margin: {
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+          },
+        },
+      },
+
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: {
+            before: 0,
+            after: 0,
+            line: 240,
           },
           children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new ImageRun({
-                  type: "png",
-                  data: imageData,
-                  transformation: {
-                    width: maxWidth,
-                    height: imageHeight,
-                  },
-                }),
-              ],
+            new ImageRun({
+              type: "png",
+              data: imageData,
+              transformation: {
+                width: maxWidth,
+                height: imageHeight,
+              },
             }),
           ],
-        },
+        }),
       ],
-    });
-
+    },
+  ],
+});
     const docxBlob = await Packer.toBlob(doc);
 
     const url = URL.createObjectURL(docxBlob);
@@ -594,10 +599,7 @@ const addFreeBlock = () => {
   아이패드용: { width: 760, height: 1040 },
 };
 
-const currentPageSize =
-  pageSizeMap[
-    pageSize as keyof typeof pageSizeMap
-  ];
+const currentPageSize = pageSizeMap.A4;
 const selectedFreeBlock =
   freeBlocks.find((block) => block.id === selectedFreeBlockId) ??
   freeBlocks[0];
@@ -610,7 +612,6 @@ useEffect(() => {
   try {
     const data = JSON.parse(saved);
 
-    setPageSize(data.pageSize ?? "A4");
     setTimetableStart(data.timetableStart ?? "08:00");
     setTimeInterval(
   data.timeInterval ?? 30
@@ -972,7 +973,7 @@ const renderBlockCanvas = (
   pageKey: string
 ) => (
   <div
-    className={`planner-canvas relative h-full overflow-hidden rounded-2xl ${
+    className={`planner-canvas relative h-full overflow-hidden ${
   canvasBorderStyle === "dashed"
     ? "border-2 border-dashed"
     : canvasBorderStyle === "solid"
@@ -980,9 +981,30 @@ const renderBlockCanvas = (
     : "border-0"
 }`}
     style={{
-      borderColor: theme.line,
-      backgroundColor: theme.page,
-    }}
+  borderColor: theme.line,
+  backgroundColor: theme.page,
+backgroundImage:
+  gridBackground === "dot"
+    ? "radial-gradient(#d4d4d4 1px, transparent 1px)"
+    : gridBackground === "line"
+    ? `
+      linear-gradient(#e5e5e5 1px, transparent 1px),
+      linear-gradient(90deg, #e5e5e5 1px, transparent 1px),
+    `
+    : "none",
+  backgroundSize:
+    gridBackground === "dot"
+      ? "20px 20px"
+      : gridBackground === "line"
+      ? "20px 20px, 20px 20px, 100% 100%"
+      : undefined,
+      backgroundPosition: "0 0",
+
+      borderRight:
+  gridBackground === "line"
+    ? "1px solid #e5e5e5"
+    : undefined,
+}}
     >
        {pageBlocks.map((block) => {
       const layout = blockLayouts[block.id];
@@ -1007,9 +1029,6 @@ className="absolute cursor-grab active:cursor-grabbing"
           style={{
             width: layout.width,
             height: layout.height,
-            boxShadow: selectedSchedule
-      ? "inset 0 0 0 2px #171717"
-      : "none",
           }}
         >
           {selectedSchedule && (
@@ -1117,6 +1136,16 @@ style={{
     </motion.div>
   );
 })}
+{gridBackground === "line" && (
+  <div
+    className="pointer-events-none absolute bottom-0 left-0 right-0"
+    style={{
+      height: "1px",
+      backgroundColor: "#e5e5e5",
+      zIndex: 50,
+    }}
+  />
+)}
   </div>
 );
 
@@ -1270,16 +1299,11 @@ const deleteTemplate = (name: string) => {
                   <div className="grid grid-cols-3 gap-2">{typeOptions.map((type) => <button key={type} onClick={() => setPlannerType(type)} className={`rounded-2xl border px-3 py-3 text-sm ${plannerType === type ? "border-neutral-900 bg-neutral-900 text-white" : "bg-white"}`}>{type}</button>)}</div>
                 </section>
                 
-
-                <section>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><LayoutTemplate className="h-5 w-5" /> 사이즈</h3>
-                  <div className="grid grid-cols-2 gap-2">{sizeOptions.map((size) => <button key={size} onClick={() => setPageSize(size)} className={`rounded-2xl border px-3 py-3 text-sm ${pageSize === size ? "border-neutral-900 bg-neutral-900 text-white" : "bg-white"}`}>{size}</button>)}</div>
-                </section>               
-
                 <div className="mt-4">
   <div className="mb-2 text-sm font-bold">
     페이지 테두리
   </div>
+  
 
   <div className="grid grid-cols-3 gap-2">
     <button
@@ -1318,6 +1342,49 @@ const deleteTemplate = (name: string) => {
       없음
     </button>
   </div>
+  <div className="mt-4">
+  <div className="mb-2 text-sm font-bold">
+    그리드 배경
+  </div>
+
+  <div className="grid grid-cols-3 gap-2">
+    <button
+      type="button"
+      onClick={() => setGridBackground("none")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        gridBackground === "none"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      없음
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setGridBackground("dot")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        gridBackground === "dot"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      점
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setGridBackground("line")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        gridBackground === "line"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      실선
+    </button>
+  </div>
+</div>
 </div>
         <section>
   <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
@@ -1502,11 +1569,7 @@ const deleteTemplate = (name: string) => {
     className="mb-2 flex gap-2"
   >
     <button
-      onClick={() => {
-        setPageSize(template.pageSize);
-        setTimetableStart(
-          template.timetableStart
-        );
+      onClick={() => {       
         setSelectedBlocks(
           template.selectedBlocks
         );
@@ -1563,18 +1626,19 @@ const deleteTemplate = (name: string) => {
   {/* 데일리: 1페이지 */}
   {plannerType === "데일리" && (
     <div
-      className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+      className="planner-page shrink-0 rounded-3xl"
       style={{
         width: currentPageSize.width,
         height: currentPageSize.height,
         padding: marginOptions.normal.padding,
+        paddingTop: 8,
         backgroundColor: theme.page,
       }}
     >
       <div
-        className="mb-3 flex items-start justify-between pb-2"
-        style={{ borderColor: theme.line }}
-      >
+  className="mb-3 flex items-start justify-between pb-0"
+  style={{ borderColor: theme.line }}
+>
         <div className="no-print">
           <h2
             className="text-2xl font-black"
@@ -1582,10 +1646,6 @@ const deleteTemplate = (name: string) => {
           >
             데일리 플래너
           </h2>
-
-          <p className="mt-1 text-sm text-neutral-400">
-            {pageSize} · {style} · {themes[selectedTheme].label}
-          </p>
         </div>
 
         <div
@@ -1605,9 +1665,9 @@ const deleteTemplate = (name: string) => {
         </div>
       </div>
 
-      <div style={{ height: "calc(100% - 70px)" }}>
-        {renderBlockCanvas(blocks, "daily")}
-      </div>
+      <div className="h-full">
+  {renderBlockCanvas(blocks, "daily")}
+</div>
     </div>
   )}
 
@@ -1615,11 +1675,12 @@ const deleteTemplate = (name: string) => {
   {plannerType === "위클리" && (
     <>
       <div
-        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        className="planner-page shrink-0 rounded-3xl "
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
           padding: marginOptions.normal.padding,
+          paddingTop: 8,
           backgroundColor: theme.page,
         }}
       >
@@ -1649,16 +1710,17 @@ const deleteTemplate = (name: string) => {
 
       {/* 위클리: 오른쪽 페이지 */}
       <div
-        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        className="planner-page shrink-0 rounded-3xl "
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
           padding: marginOptions.normal.padding,
+          paddingTop: 8,
           backgroundColor: theme.page,
         }}
       >
         <div
-          className="mb-3 flex items-center justify-between border-b pb-2"
+          className="mb-0 flex items-center justify-between border-b pb-0"
           style={{ borderColor: theme.line }}
         >
           <div
@@ -1687,17 +1749,18 @@ const deleteTemplate = (name: string) => {
   {plannerType === "먼슬리" && (
     <>
       <div
-        className="planner-page shrink-0 rounded-3xl shadow-inner print:shadow-none"
+        className="planner-page shrink-0 rounded-3xl "
         style={{
   width: currentPageSize.width,
   height: currentPageSize.height,
   padding: marginOptions.normal.padding,
+  paddingTop: 8,
   backgroundColor: theme.page,
   boxSizing: "border-box",
 }}
       >
         <div
-          className="mb-3 flex items-start justify-between border-b pb-2"
+          className="mb-0 flex items-start justify-between border-b pb-0"
           style={{ borderColor: theme.line }}
         >
           <div
@@ -1763,7 +1826,7 @@ const deleteTemplate = (name: string) => {
 
       {/* 먼슬리: 오른쪽 페이지 */}
       <div
-        className="planner-page shrink-0 overflow-hidden rounded-3xl shadow-inner print:shadow-none"
+        className="planner-page shrink-0 overflow-hidden rounded-3xl "
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
@@ -1773,7 +1836,7 @@ const deleteTemplate = (name: string) => {
         }}
       >
         <div
-          className="mb-3 flex items-start justify-between border-b pb-2"
+          className="mb-0 flex items-start justify-between border-b pb-0"
           style={{ borderColor: theme.line }}
         >
           <div
