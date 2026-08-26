@@ -1,7 +1,13 @@
 "use client";
 
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import html2canvas from "html2canvas-pro";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  ImageRun,
+  AlignmentType,
+} from "docx";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -13,7 +19,6 @@ import {
   LayoutTemplate,
   Move,
   Palette,
-  Printer,
   RotateCcw,
   Save,
   Sparkles,
@@ -256,12 +261,12 @@ function ResizeHandle({
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   };
-    return (
-    <div
-      onMouseDown={handleMouseDown}
-      className="absolute bottom-1 right-1 h-4 w-4 cursor-se-resize rounded-sm border border-neutral-400 bg-white"
-    />
-  );
+return (
+  <div
+    onMouseDown={handleMouseDown}
+    className="no-print absolute bottom-2 right-2 z-50 h-4 w-4 cursor-se-resize rounded-full border border-neutral-400 bg-white"
+  />
+);
 }
 
 function FreeBlockResizeHandle({
@@ -343,11 +348,15 @@ function PreviewBlock({
     backgroundColor: theme.block,
     borderColor: theme.line,
   };
-  const baseClass = "h-full overflow-hidden rounded-2xl border p-4 shadow-sm";
+  const baseClass =
+  "h-full overflow-hidden rounded-2xl p-4";
   if (id === "schedule") {
     return (
-      <div className={`${baseClass} relative`} style={baseStyle}>
-        <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
+<div
+  className={`${baseClass} relative border-0 shadow-none`}
+  style={baseStyle}
+>
+          <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
 <HalfHourScheduleRows
   startTime={timetableStart}
   layout={layout}
@@ -415,6 +424,10 @@ export default function DiaryMakerSite() {
   const [plannerType, setPlannerType] = useState("데일리");
   const [pageSize, setPageSize] = useState("A5");
   const [style, setStyle] = useState("미니멀");
+  const [selectedSchedule, setSelectedSchedule] = useState(false);
+  const [canvasBorderStyle, setCanvasBorderStyle] = useState<
+  "dashed" | "solid" | "none"
+>("none");
 const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
   {
     id: "free-1",
@@ -429,6 +442,113 @@ const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
     height: 180,
   },
 ]);
+const saveAsWord = async () => {
+  const element = document.getElementById("print-area");
+
+  if (!element) {
+    alert("저장할 플래너 영역을 찾을 수 없습니다.");
+    return;
+  }
+
+  try {
+const canvas = await html2canvas(element, {
+  scale: 3,
+  backgroundColor: "#ffffff",
+  useCORS: true,
+  ignoreElements: (el) =>
+    el.classList.contains("no-print"),
+  onclone: (clonedDocument) => {
+    const clonedArea =
+      clonedDocument.getElementById("print-area");
+
+    if (clonedArea) {
+      clonedArea.style.background = "#ffffff";
+      clonedArea.style.boxShadow = "none";
+    }
+    clonedDocument
+  .querySelectorAll(".no-print, [contenteditable='true'], textarea")
+  .forEach((el) => {
+    (el as HTMLElement).style.display = "none";
+  });
+    clonedDocument
+      .querySelectorAll(".no-print")
+      .forEach((el) => {
+        (el as HTMLElement).style.display = "none";
+      });
+
+    clonedDocument
+      .querySelectorAll(".planner-page, .planner-canvas")
+      .forEach((el) => {
+        const node = el as HTMLElement;
+        node.style.boxShadow = "none";
+        node.style.background = "#ffffff";
+      });
+  },
+});
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) {
+          resolve(result);
+        } else {
+          reject(new Error("이미지 변환에 실패했습니다."));
+        }
+      }, "image/png");
+    });
+
+    const imageData = await blob.arrayBuffer();
+
+    const maxWidth = 650;
+    const imageHeight =
+      (canvas.height / canvas.width) * maxWidth;
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: {
+                top: 360,
+                right: 360,
+                bottom: 360,
+                left: 360,
+              },
+            },
+          },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new ImageRun({
+                  type: "png",
+                  data: imageData,
+                  transformation: {
+                    width: maxWidth,
+                    height: imageHeight,
+                  },
+                }),
+              ],
+            }),
+          ],
+        },
+      ],
+    });
+
+    const docxBlob = await Packer.toBlob(doc);
+
+    const url = URL.createObjectURL(docxBlob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "diary-planner.docx";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error(error);
+    alert("Word 파일 저장 중 오류가 발생했습니다.");
+  }
+};
+
 const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
 const addFreeBlock = () => {
   const newId = `free-${Date.now()}`;
@@ -452,8 +572,7 @@ const addFreeBlock = () => {
 
   setSelectedFreeBlockId(newId);
 };
-  const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("minimal");
-  const [printMargin, setPrintMargin] = useState<MarginKey>("normal");
+  const selectedTheme = "minimal" as const;
   const [selectedCategory, setSelectedCategory] = useState<WeeklyCategory>("study");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
@@ -492,12 +611,10 @@ useEffect(() => {
     const data = JSON.parse(saved);
 
     setPageSize(data.pageSize ?? "A4");
-    setSelectedTheme(data.selectedTheme ?? "minimal");
     setTimetableStart(data.timetableStart ?? "08:00");
     setTimeInterval(
   data.timeInterval ?? 30
 );
-    setPrintMargin(data.printMargin ?? "normal");
     setSelectedBlocks(data.selectedBlocks ?? []);
     setBlockLayouts(data.blockLayouts ?? {});
 
@@ -527,7 +644,7 @@ const autoArrange = (targetBlocks = selectedBlocks) => {
     const next = { ...prev };
 
     const gap = 16;
-    const padding = marginOptions[printMargin].padding;
+    const padding = marginOptions.normal.padding;
 
     const canvasWidth = Math.max(
       180,
@@ -742,7 +859,6 @@ const savePlanner = () => {
       selectedTheme,
       timetableStart,
       timeInterval,
-      printMargin,
       selectedCategory,
       selectedTemplate,
       selectedBlocks,
@@ -750,7 +866,6 @@ const savePlanner = () => {
       freeBlocks,
     })
   );
-
   setSaveMessage("저장 완료! 다음에 열어도 이 배치를 불러옵니다.");
   setTimeout(() => setSaveMessage(""), 2500);
 };
@@ -764,7 +879,6 @@ useEffect(() => {
       style,
       selectedTheme,
       timetableStart,
-      printMargin,
       selectedCategory,
       selectedTemplate,
       selectedBlocks,
@@ -778,7 +892,6 @@ useEffect(() => {
   style,
   selectedTheme,
   timetableStart,
-  printMargin,
   selectedCategory,
   selectedTemplate,
   selectedBlocks,
@@ -802,7 +915,6 @@ const saveTemplate = () => {
     style,
     selectedTheme,
     timetableStart,
-    printMargin,
     selectedCategory,
     selectedTemplate,
     selectedBlocks,
@@ -850,42 +962,6 @@ const deleteTemplate = (name: string) => {
 
   setSavedTemplates(nextTemplates);
 };
-const downloadPdf = async () => {
-  const element = document.getElementById("print-area");
-  if (!element) return;
-
-  const canvas = await html2canvas(element, {
-    scale: 3,
-    backgroundColor: "#ffffff",
-    ignoreElements: (el) => el.classList?.contains("no-print"),
-    onclone: (doc) => {
-      doc.querySelectorAll<HTMLElement>("*").forEach((node) => {
-        node.style.boxShadow = "none";
-      });
-    },
-  });
-
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
-
-  const finalWidth = imgWidth * scale;
-  const finalHeight = imgHeight * scale;
-
-  const x = (pageWidth - finalWidth) / 2;
-  const y = (pageHeight - finalHeight) / 2;
-
-  pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
-  pdf.save("DiaryLab.pdf");
-};
-const handlePrint = () => window.print();
 const weeklySplitIndex = Math.ceil(blocks.length / 2);
 
 const weeklyLeftBlocks = blocks.slice(0, weeklySplitIndex);
@@ -896,7 +972,13 @@ const renderBlockCanvas = (
   pageKey: string
 ) => (
   <div
-    className="planner-canvas relative h-full overflow-hidden rounded-2xl border-2 border-dashed"
+    className={`planner-canvas relative h-full overflow-hidden rounded-2xl ${
+  canvasBorderStyle === "dashed"
+    ? "border-2 border-dashed"
+    : canvasBorderStyle === "solid"
+    ? "border-2 border-solid"
+    : "border-0"
+}`}
     style={{
       borderColor: theme.line,
       backgroundColor: theme.page,
@@ -917,12 +999,22 @@ const renderBlockCanvas = (
             x: layout.x,
             y: layout.y,
           }}
+           onPointerDown={() => {
+    setSelectedSchedule(true);
+    setSelectedFreeBlockId("");
+           }}
 className="absolute cursor-grab active:cursor-grabbing"
           style={{
             width: layout.width,
             height: layout.height,
+            boxShadow: selectedSchedule
+      ? "inset 0 0 0 2px #171717"
+      : "none",
           }}
         >
+          {selectedSchedule && (
+  <div className="no-print pointer-events-none absolute inset-0 z-50 rounded-2xl border-2 border-neutral-900" />
+)}
           <PreviewBlock
             id={block.id}
             label={block.label}
@@ -983,17 +1075,15 @@ className="absolute cursor-grab active:cursor-grabbing"
         );
       }}
       className="absolute cursor-grab active:cursor-grabbing"
-      style={{
-        width: layout.width,
-        height: layout.height,
-        zIndex:
-          selectedFreeBlockId === freeBlock.id
-            ? 20
-            : 1,
-      }}
-      onClick={() =>
-        setSelectedFreeBlockId(freeBlock.id)
-      }
+style={{
+  width: layout.width,
+  height: layout.height,
+}}
+      onPointerDown={() => {
+  setSelectedSchedule(false);
+  setSelectedFreeBlockId(freeBlock.id);
+}}
+      
     >
       {selectedFreeBlockId === freeBlock.id && (
   <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
@@ -1066,7 +1156,6 @@ const deleteTemplate = (name: string) => {
     style,
     selectedTheme,
     timetableStart,
-    printMargin,
     selectedBlocks,
     blockLayouts,
   };
@@ -1148,10 +1237,10 @@ const deleteTemplate = (name: string) => {
               <Sparkles className="h-4 w-4" /> 나만의 다이어리 속지 제작 사이트
             </div>
             <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">
-              추천받고,<br />색을 바꾸고,<br />인쇄까지 완성하세요.
+              추천받고,<br />색을 바꾸고,<br />저장까지 완성하세요.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-neutral-600">
-              추천 위클리 템플릿, 자동 정렬, 색상 커스터마이징, 인쇄 여백 설정까지 한 번에 사용할 수 있습니다.
+              추천 위클리 템플릿, 자동 정렬, 색상 커스터마이징까지 한 번에 사용할 수 있습니다.
             </p>
             <div className="mt-8"><a href="#maker"><Button className="rounded-2xl px-6 py-6 text-base">무료로 양식 만들기 <ArrowRight className="ml-2 h-5 w-5" /></Button></a></div>
           </motion.div>
@@ -1185,32 +1274,51 @@ const deleteTemplate = (name: string) => {
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><LayoutTemplate className="h-5 w-5" /> 사이즈</h3>
                   <div className="grid grid-cols-2 gap-2">{sizeOptions.map((size) => <button key={size} onClick={() => setPageSize(size)} className={`rounded-2xl border px-3 py-3 text-sm ${pageSize === size ? "border-neutral-900 bg-neutral-900 text-white" : "bg-white"}`}>{size}</button>)}</div>
-                </section>
+                </section>               
 
-                <section>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><Palette className="h-5 w-5" /> 색상 테마</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(Object.keys(themes) as ThemeKey[]).map((key) => (
-                      <button key={key} onClick={() => setSelectedTheme(key)} className={`flex items-center gap-2 rounded-2xl border px-3 py-3 text-sm ${selectedTheme === key ? "border-neutral-900" : "bg-white"}`}>
-                        <span className="h-5 w-5 rounded-full border" style={{ backgroundColor: themes[key].accent }} />
-                        {themes[key].label}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-                
+                <div className="mt-4">
+  <div className="mb-2 text-sm font-bold">
+    페이지 테두리
+  </div>
 
-                <section>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><Printer className="h-5 w-5" /> 인쇄 여백</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(Object.keys(marginOptions) as MarginKey[]).map((key) => (
-                      <button key={key} onClick={() => setPrintMargin(key)} className={`rounded-2xl border px-2 py-3 text-sm ${printMargin === key ? "border-neutral-900 bg-neutral-900 text-white" : "bg-white"}`}>
-                        <div>{marginOptions[key].label}</div>
-                        <div className="text-[10px] opacity-70">{marginOptions[key].description}</div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
+  <div className="grid grid-cols-3 gap-2">
+    <button
+      type="button"
+      onClick={() => setCanvasBorderStyle("dashed")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        canvasBorderStyle === "dashed"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      점선
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setCanvasBorderStyle("solid")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        canvasBorderStyle === "solid"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      실선
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setCanvasBorderStyle("none")}
+      className={`rounded-xl border px-3 py-2 text-sm ${
+        canvasBorderStyle === "none"
+          ? "bg-neutral-900 text-white"
+          : "bg-white"
+      }`}
+    >
+      없음
+    </button>
+  </div>
+</div>
         <section>
   <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
     <CalendarDays className="h-5 w-5" /> 시간표 설정
@@ -1396,14 +1504,8 @@ const deleteTemplate = (name: string) => {
     <button
       onClick={() => {
         setPageSize(template.pageSize);
-        setSelectedTheme(
-          template.selectedTheme
-        );
         setTimetableStart(
           template.timetableStart
-        );
-        setPrintMargin(
-          template.printMargin
         );
         setSelectedBlocks(
           template.selectedBlocks
@@ -1429,7 +1531,7 @@ const deleteTemplate = (name: string) => {
 ))}
 </section>
                 <div className="rounded-2xl bg-neutral-100 p-4 text-sm leading-6 text-neutral-600">
-                  항목을 체크하면 자동으로 상단부터 정렬됩니다. 시간표는 30분 단위이며, 색상과 인쇄 여백도 조정할 수 있습니다.
+                  항목을 체크하면 자동으로 상단부터 정렬됩니다. 시간표는 30분 단위입니다.
                 </div>
 
                 {saveMessage && <div className="rounded-2xl bg-green-50 p-3 text-sm text-green-700">{saveMessage}</div>}
@@ -1444,8 +1546,11 @@ const deleteTemplate = (name: string) => {
 >
   <Save className="mr-2 h-4 w-4" /> 저장
 </Button>
-                  <Button onClick={handlePrint} className="rounded-2xl py-6 text-base"><Printer className="mr-2 h-4 w-4" /> PDF</Button>
-                </div>
+                  <Button onClick={saveAsWord}>
+  <Download className="h-4 w-4" />
+  Word / 한글 저장
+</Button>
+</div>
               </CardContent>
             </Card>
 
@@ -1462,12 +1567,12 @@ const deleteTemplate = (name: string) => {
       style={{
         width: currentPageSize.width,
         height: currentPageSize.height,
-        padding: marginOptions[printMargin].padding,
+        padding: marginOptions.normal.padding,
         backgroundColor: theme.page,
       }}
     >
       <div
-        className="mb-3 flex items-start justify-between border-b pb-2"
+        className="mb-3 flex items-start justify-between pb-2"
         style={{ borderColor: theme.line }}
       >
         <div className="no-print">
@@ -1484,7 +1589,7 @@ const deleteTemplate = (name: string) => {
         </div>
 
         <div
-          className="rounded-2xl border px-4 py-2 text-center"
+          className="ml-auto text-center"
           style={{
             borderColor: theme.line,
             backgroundColor: theme.block,
@@ -1514,7 +1619,7 @@ const deleteTemplate = (name: string) => {
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
-          padding: marginOptions[printMargin].padding,
+          padding: marginOptions.normal.padding,
           backgroundColor: theme.page,
         }}
       >
@@ -1548,7 +1653,7 @@ const deleteTemplate = (name: string) => {
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
-          padding: marginOptions[printMargin].padding,
+          padding: marginOptions.normal.padding,
           backgroundColor: theme.page,
         }}
       >
@@ -1586,7 +1691,7 @@ const deleteTemplate = (name: string) => {
         style={{
   width: currentPageSize.width,
   height: currentPageSize.height,
-  padding: marginOptions[printMargin].padding,
+  padding: marginOptions.normal.padding,
   backgroundColor: theme.page,
   boxSizing: "border-box",
 }}
@@ -1662,7 +1767,7 @@ const deleteTemplate = (name: string) => {
         style={{
           width: currentPageSize.width,
           height: currentPageSize.height,
-          padding: marginOptions[printMargin].padding,
+          padding: marginOptions.normal.padding,
           backgroundColor: theme.page,
           boxSizing: "border-box",
         }}
