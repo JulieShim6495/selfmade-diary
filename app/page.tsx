@@ -326,8 +326,6 @@ function PreviewBlock({
   label,
   layout,
   theme,
-  timetableStart,
-  timeInterval,
 
   onSizeChange,
   onResize,
@@ -336,8 +334,6 @@ function PreviewBlock({
   label: string;
   layout: BlockLayout;
   theme: typeof themes[ThemeKey];
-  timetableStart: string;
-  timeInterval: 15 | 30 | 60;
   onSizeChange: (id: BlockId, key: "width" | "height", amount: number) => void;
   onResize: (id: BlockId, width: number, height: number) => void;
 }): import("react/jsx-runtime").JSX.Element {
@@ -347,27 +343,6 @@ function PreviewBlock({
   };
   const baseClass =
   "h-full overflow-hidden rounded-2xl p-4";
-  if (id === "schedule") {
-    return (
-<div
-  className={`${baseClass} relative`}
-  style={{ ...baseStyle, backgroundColor: "#ffffff" }}
->
-          <BlockHeader id={id} label={label} theme={theme} onSizeChange={onSizeChange} />
-<HalfHourScheduleRows
-  startTime={timetableStart}
-  layout={layout}
-  timeInterval={timeInterval}
-/>
-        <ResizeHandle
-  id={id}
-  layout={layout}
-  theme={theme}
-  onResize={onResize}
-/>
-      </div>
-    );
-  }
 
 const noteLineCount = Math.max(
   3,
@@ -644,8 +619,6 @@ const addScheduleBlock = () => {
   const [templateName, setTemplateName] =
   useState("");
   const [blockLayouts, setBlockLayouts] = useState<Record<BlockId, BlockLayout>>(defaultLayouts);
-  const [timetableStart, setTimetableStart] = useState("08:00");
-  const [timeInterval, setTimeInterval] = useState<15 | 30 | 60>(30);
   const theme = themes[selectedTheme];
   const pageSizeMap = {
   A4: { width: 760, height: 1040 },
@@ -667,10 +640,6 @@ useEffect(() => {
   try {
     const data = JSON.parse(saved);
 
-    setTimetableStart(data.timetableStart ?? "08:00");
-    setTimeInterval(
-  data.timeInterval ?? 30
-);
     setSelectedBlocks(data.selectedBlocks ?? []);
     setBlockLayouts(data.blockLayouts ?? {});
 
@@ -961,8 +930,6 @@ const savePlanner = () => {
       pageSize,
       style,
       selectedTheme,
-      timetableStart,
-      timeInterval,
       selectedCategory,
       selectedTemplate,
       selectedBlocks,
@@ -982,7 +949,6 @@ useEffect(() => {
       pageSize,
       style,
       selectedTheme,
-      timetableStart,
       selectedCategory,
       selectedTemplate,
       selectedBlocks,
@@ -995,7 +961,6 @@ useEffect(() => {
   pageSize,
   style,
   selectedTheme,
-  timetableStart,
   selectedCategory,
   selectedTemplate,
   selectedBlocks,
@@ -1018,7 +983,6 @@ const saveTemplate = () => {
     pageSize,
     style,
     selectedTheme,
-    timetableStart,
     selectedCategory,
     selectedTemplate,
     selectedBlocks,
@@ -1166,8 +1130,6 @@ className="absolute cursor-grab active:cursor-grabbing"
             label={block.label}
             layout={layout}
             theme={theme}
-            timetableStart={timetableStart}
-            timeInterval={timeInterval}
             onSizeChange={changeBlockSize}
             onResize={resizeBlock}
           />
@@ -1539,36 +1501,6 @@ const deleteTemplate = (name: string) => {
   <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
     <CalendarDays className="h-5 w-5" /> 시간표 설정
   </h3>
-<section>
-
-  <div className="grid grid-cols-3 gap-2">
-    {[15, 30, 60].map((minutes) => (
-      <button
-        key={minutes}
-        type="button"
-        onClick={() => setTimeInterval(minutes as 15 | 30 | 60)}
-        className={`rounded-2xl border px-3 py-3 text-sm ${
-          timeInterval === minutes
-            ? "border-neutral-900 bg-neutral-900 text-white"
-            : "bg-white"
-        }`}
-      >
-        {minutes === 60 ? "1시간" : `${minutes}분`}
-      </button>
-    ))}
-  </div>
-</section>
-  <input
-    type="time"
-    step="1800"
-    value={timetableStart}
-    onChange={(e) => setTimetableStart(e.target.value)}
-    className="w-full rounded-2xl border bg-white px-4 py-3 text-sm"
-  />
-
-  <p className="mt-2 text-xs text-neutral-500">
-    선택하는 단위로 시간표가 자동 생성됩니다.
-  </p>
 </section>
 
                 <section>
