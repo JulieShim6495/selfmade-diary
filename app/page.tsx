@@ -421,6 +421,9 @@ export default function DiaryMakerSite() {
   const pageSize = "A4";
   const [plannerType, setPlannerType] = useState("데일리");
   const [style, setStyle] = useState("미니멀");
+  const [wordPageSize, setWordPageSize] = useState<
+  "A4" | "A5" | "B5"
+>("A4");
   const [gridBackground, setGridBackground] = useState<
   "none" | "dot" | "line"
 >("none");
@@ -493,18 +496,38 @@ clonedDocument
 
     const imageData = await blob.arrayBuffer();
 
-    const maxWidth = 760;
-    const imageHeight =
-      (canvas.height / canvas.width) * maxWidth;
+const wordSizeMap = {
+  A4: {
+    pageWidth: 11906,
+    pageHeight: 16838,
+    imageWidth: 760,
+  },
+  A5: {
+    pageWidth: 8391,
+    pageHeight: 11906,
+    imageWidth: 537,
+  },
+  B5: {
+    pageWidth: 9979,
+    pageHeight: 14173,
+    imageWidth: 637,
+  },
+} as const;
 
+const selectedWordSize = wordSizeMap[wordPageSize];
+
+const maxWidth = selectedWordSize.imageWidth;
+
+const imageHeight =
+  (canvas.height / canvas.width) * maxWidth;
 const doc = new Document({
   sections: [
     {
       properties: {
         page: {
           size: {
-            width: 11906,
-            height: 16838,
+            width: selectedWordSize.pageWidth,
+            height: selectedWordSize.pageHeight,
           },
           margin: {
             top: 0,
@@ -521,7 +544,6 @@ const doc = new Document({
           spacing: {
             before: 0,
             after: 0,
-            line: 240,
           },
           children: [
             new ImageRun({
@@ -544,7 +566,7 @@ const doc = new Document({
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "diary-planner.docx";
+    link.download = `diary-planner-${wordPageSize}.docx`;
     link.click();
 
     URL.revokeObjectURL(url);
@@ -699,16 +721,18 @@ const autoArrange = (targetBlocks = selectedBlocks) => {
     autoArrange(template.blocks);
   };
 const deleteSelectedFreeBlock = () => {
-  if (freeBlocks.length <= 1) return;
-
   const remainingBlocks = freeBlocks.filter(
     (block) => block.id !== selectedFreeBlockId
   );
 
   setFreeBlocks(remainingBlocks);
-  setSelectedFreeBlockId(remainingBlocks[0].id);
-};
 
+  if (remainingBlocks.length > 0) {
+    setSelectedFreeBlockId(remainingBlocks[0].id);
+  } else {
+    setSelectedFreeBlockId("");
+  }
+};
 const duplicateSelectedFreeBlock = () => {
   const source = freeBlocks.find(
     (block) => block.id === selectedFreeBlockId
@@ -818,8 +842,54 @@ const preventFreeBlockOverlap = (
 
   return { x, y };
 };
+const preventScheduleOverlap = (
+  x: number,
+  y: number
+) => {
+  const current = blockLayouts.schedule;
 
-  const updateBlockPosition = (id: BlockId, x: number, y: number) => {
+  const scheduleElement = document.querySelector(
+    `[data-planner-block-id="schedule"]`
+  );
+
+  if (!scheduleElement) {
+    return { x, y };
+  }
+
+  // 드래그가 끝난 현재 실제 시간표 테두리
+  const scheduleRect =
+    scheduleElement.getBoundingClientRect();
+
+  const overlapsFreeBlock = freeBlocks.some(
+    (freeBlock) => {
+      const freeElement = document.querySelector(
+        `[data-free-block-id="${freeBlock.id}"]`
+      );
+
+      if (!freeElement) return false;
+
+      const freeRect =
+        freeElement.getBoundingClientRect();
+
+      return (
+        scheduleRect.left < freeRect.right &&
+        scheduleRect.right > freeRect.left &&
+        scheduleRect.top < freeRect.bottom &&
+        scheduleRect.bottom > freeRect.top
+      );
+    }
+  );
+
+  if (overlapsFreeBlock) {
+    return {
+      x: current.x,
+      y: current.y,
+    };
+  }
+
+  return { x, y };
+};  
+const updateBlockPosition = (id: BlockId, x: number, y: number) => {
     setBlockLayouts((prev) => ({ ...prev, [id]: { ...prev[id], x, y } }));
   };
 
@@ -989,8 +1059,8 @@ backgroundImage:
     : gridBackground === "line"
     ? `
       linear-gradient(#e5e5e5 1px, transparent 1px),
-      linear-gradient(90deg, #e5e5e5 1px, transparent 1px),
-    `
+      linear-gradient(90deg, #e5e5e5 1px, transparent 1px)
+        `
     : "none",
   backgroundSize:
     gridBackground === "dot"
@@ -1021,6 +1091,30 @@ backgroundImage:
             x: layout.x,
             y: layout.y,
           }}
+          onDragEnd={(_, info) => {
+  const gridSize = 30;
+
+  const nextX =
+    Math.round(
+      (layout.x + info.offset.x) / gridSize
+    ) * gridSize;
+
+  const nextY =
+    Math.round(
+      (layout.y + info.offset.y) / gridSize
+    ) * gridSize;
+
+  const safePosition =
+    block.id === "schedule"
+      ? preventScheduleOverlap(nextX, nextY)
+      : { x: nextX, y: nextY };
+
+  updateBlockPosition(
+    block.id,
+    safePosition.x,
+    safePosition.y
+  );
+}}
            onPointerDown={() => {
     setSelectedSchedule(true);
     setSelectedFreeBlockId("");
@@ -1438,7 +1532,7 @@ const deleteTemplate = (name: string) => {
   <h3 className="mb-3 text-lg font-black">
     자유 블록
   </h3>
-
+{selectedFreeBlock && (
   <FreeBlockSettings
     title={selectedFreeBlock.title}
     onTitleChange={(title) =>
@@ -1491,6 +1585,7 @@ const deleteTemplate = (name: string) => {
       )
     }
   />
+)}
 
   <button
     type="button"
@@ -1511,7 +1606,6 @@ const deleteTemplate = (name: string) => {
   <button
     type="button"
     onClick={deleteSelectedFreeBlock}
-    disabled={freeBlocks.length <= 1}
     className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
   >
     선택한 자유 블록 삭제
@@ -1593,11 +1687,7 @@ const deleteTemplate = (name: string) => {
   </div>
 ))}
 </section>
-                <div className="rounded-2xl bg-neutral-100 p-4 text-sm leading-6 text-neutral-600">
-                  항목을 체크하면 자동으로 상단부터 정렬됩니다. 시간표는 30분 단위입니다.
-                </div>
 
-                {saveMessage && <div className="rounded-2xl bg-green-50 p-3 text-sm text-green-700">{saveMessage}</div>}
 
                 <div className="grid grid-cols-2 gap-2">
                   <Button onClick={() => autoArrange()} variant="outline" className="rounded-2xl py-6 text-base"><Wand2 className="mr-2 h-4 w-4" /> 자동 정렬</Button>
@@ -1608,7 +1698,30 @@ const deleteTemplate = (name: string) => {
   className="rounded-2xl py-6 text-base"
 >
   <Save className="mr-2 h-4 w-4" /> 저장
+
 </Button>
+<div className="col-span-2">
+  <div className="mb-2 text-sm font-bold">
+    저장 용지 크기
+  </div>
+
+  <div className="grid grid-cols-3 gap-2">
+    {(["A4", "A5", "B5"] as const).map((size) => (
+      <button
+        key={size}
+        type="button"
+        onClick={() => setWordPageSize(size)}
+        className={`rounded-xl border px-3 py-2 text-sm ${
+          wordPageSize === size
+            ? "border-neutral-900 bg-neutral-900 text-white"
+            : "bg-white"
+        }`}
+      >
+        {size}
+      </button>
+    ))}
+  </div>
+</div>
                   <Button onClick={saveAsWord}>
   <Download className="h-4 w-4" />
   Word / 한글 저장
@@ -1902,16 +2015,6 @@ const deleteTemplate = (name: string) => {
   )}
   </div>
 
-  <div
-    id="print"
-    className="no-print mt-2 rounded-2xl border border-dashed p-4 text-center text-sm text-neutral-400"
-    style={{
-      borderColor: theme.line,
-      backgroundColor: theme.block,
-    }}
-  >
-    PDF 저장 시 각 페이지가 한 장씩 출력됩니다.
-  </div>
 </CardContent>          
 </Card>
           </div>
