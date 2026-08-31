@@ -406,6 +406,9 @@ return (
 }
 type FreeBlockItem = {
   id: string;
+
+  type: "free" | "schedule";
+
   title: string;
   rowCount: number;
   showCheckbox: boolean;
@@ -416,6 +419,9 @@ type FreeBlockItem = {
   y: number;
   width: number;
   height: number;
+
+  scheduleStart?: string;
+scheduleInterval?: 15 | 30 | 60;
 };
 export default function DiaryMakerSite() {
   const pageSize = "A4";
@@ -434,6 +440,7 @@ export default function DiaryMakerSite() {
 const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
   {
     id: "free-1",
+    type: "free",
     title: "자유 블록",
     rowCount: 5,
     showCheckbox: true,
@@ -585,6 +592,7 @@ const addFreeBlock = () => {
     ...previous,
     {
       id: newId,
+      type: "free",
       title: "새 자유 블록",
       rowCount: 5,
       showCheckbox: true,
@@ -594,6 +602,31 @@ const addFreeBlock = () => {
       y: 20 + Math.floor(index / 2) * 200,
       width: 240,
       height: 180,
+    },
+  ]);
+
+  setSelectedFreeBlockId(newId);
+};
+const addScheduleBlock = () => {
+  const newId = `schedule-${Date.now()}`;
+  const index = freeBlocks.length;
+
+  setFreeBlocks((previous) => [
+    ...previous,
+    {
+      id: newId,
+      type: "schedule",
+      scheduleStart: "08:00",
+      scheduleInterval: 30,
+      title: "시간표",
+      rowCount: 0,
+      showCheckbox: false,
+      titleAlign: "left",
+      titleSize: 16,
+      x: 20 + (index % 2) * 260,
+      y: 20 + Math.floor(index / 2) * 260,
+      width: 240,
+      height: 320,
     },
   ]);
 
@@ -1201,14 +1234,36 @@ style={{
       {selectedFreeBlockId === freeBlock.id && (
   <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
 )}
-      <FreeBlock
-        title={freeBlock.title}
-        rowCount={freeBlock.rowCount}
-        showCheckbox={freeBlock.showCheckbox}
-        titleAlign={freeBlock.titleAlign}
-        titleSize={freeBlock.titleSize}
-        lineColor={theme.line}
-      />
+      {freeBlock.type === "schedule" ? (
+  <div
+    className="h-full rounded-2xl bg-white p-4"
+  >
+    <div
+      className="mb-3 font-bold"
+      style={{
+        fontSize: `${freeBlock.titleSize}px`,
+        textAlign: freeBlock.titleAlign,
+      }}
+    >
+      {freeBlock.title}
+    </div>
+
+    <HalfHourScheduleRows
+  startTime={freeBlock.scheduleStart ?? "08:00"}
+  layout={layout}
+  timeInterval={freeBlock.scheduleInterval ?? 30}
+/>
+  </div>
+) : (
+  <FreeBlock
+    title={freeBlock.title}
+    rowCount={freeBlock.rowCount}
+    showCheckbox={freeBlock.showCheckbox}
+    titleAlign={freeBlock.titleAlign}
+    titleSize={freeBlock.titleSize}
+    lineColor={theme.line}
+  />
+)}
 
       <FreeBlockResizeHandle
         freeBlock={freeBlock}
@@ -1585,6 +1640,66 @@ const deleteTemplate = (name: string) => {
       )
     }
   />
+  
+)}
+{selectedFreeBlock?.type === "schedule" && (
+  <div className="rounded-2xl border bg-white p-4">
+    <div className="mb-3 text-sm font-bold">시간표 설정</div>
+
+    <label className="mb-2 block text-sm">
+      시작 시간
+    </label>
+
+    <input
+      type="time"
+      value={selectedFreeBlock.scheduleStart ?? "08:00"}
+      onChange={(e) =>
+        setFreeBlocks((previous) =>
+          previous.map((block) =>
+            block.id === selectedFreeBlockId
+              ? {
+                  ...block,
+                  scheduleStart: e.target.value,
+                }
+              : block
+          )
+        )
+      }
+      className="mb-4 w-full rounded-xl border px-3 py-2"
+    />
+
+    <div className="mb-2 text-sm">
+      시간 간격
+    </div>
+
+    <div className="grid grid-cols-3 gap-2">
+      {[15, 30, 60].map((interval) => (
+        <button
+          key={interval}
+          type="button"
+          onClick={() =>
+            setFreeBlocks((previous) =>
+              previous.map((block) =>
+                block.id === selectedFreeBlockId
+                  ? {
+                      ...block,
+                      scheduleInterval: interval as 15 | 30 | 60,
+                    }
+                  : block
+              )
+            )
+          }
+          className={`rounded-xl border px-3 py-2 text-sm ${
+            (selectedFreeBlock.scheduleInterval ?? 30) === interval
+              ? "bg-neutral-900 text-white"
+              : "bg-white"
+          }`}
+        >
+          {interval}분
+        </button>
+      ))}
+    </div>
+  </div>
 )}
 
   <button
@@ -1594,7 +1709,13 @@ const deleteTemplate = (name: string) => {
   >
     + 자유 블록 추가
   </button>
-
+  <button
+  type="button"
+  onClick={addScheduleBlock}
+  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+>
+  + 시간표 추가
+</button>
   <button
     type="button"
     onClick={duplicateSelectedFreeBlock}
@@ -1690,16 +1811,6 @@ const deleteTemplate = (name: string) => {
 
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => autoArrange()} variant="outline" className="rounded-2xl py-6 text-base"><Wand2 className="mr-2 h-4 w-4" /> 자동 정렬</Button>
-                  <Button onClick={resetLayout} variant="outline" className="rounded-2xl py-6 text-base"><RotateCcw className="mr-2 h-4 w-4" /> 초기화</Button>
-<Button
-  onClick={savePlanner}
-  variant="outline"
-  className="rounded-2xl py-6 text-base"
->
-  <Save className="mr-2 h-4 w-4" /> 저장
-
-</Button>
 <div className="col-span-2">
   <div className="mb-2 text-sm font-bold">
     저장 용지 크기
