@@ -1497,23 +1497,7 @@ const deleteTemplate = (name: string) => {
   </div>
 </div>
 </div>
-        <section>
-  <h3 className="mb-3 flex items-center gap-2 text-lg font-black">
-    <CalendarDays className="h-5 w-5" /> 시간표 설정
-  </h3>
-</section>
 
-                <section>
-                  <h3 className="mb-3 flex items-center gap-2 text-lg font-black"><CheckSquare className="h-5 w-5" /> 넣을 항목</h3>
-                  <div className="grid max-h-[420px] gap-2 overflow-y-auto pr-1">
-                    {blockOptions.map((block) => (
-                      <label key={block.id} className="flex cursor-pointer items-center justify-between rounded-2xl border bg-white px-4 py-3">
-                        <span>{block.label}</span>
-                        <input type="checkbox" checked={selectedBlocks.includes(block.id)} onChange={() => toggleBlock(block.id)} className="h-5 w-5 accent-neutral-900" />
-                      </label>
-                    ))}
-                  </div>
-                </section>
                 <section>
 <section className="border-t pt-6">
   <h3 className="mb-3 text-lg font-black">
