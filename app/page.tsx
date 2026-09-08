@@ -397,6 +397,7 @@ type FreeBlockItem = {
 
   scheduleStart?: string;
 scheduleInterval?: 15 | 30 | 60;
+pageKey?: string;
 };
 export default function DiaryMakerSite() {
   const pageSize = "A4";
@@ -428,137 +429,181 @@ const [freeBlocks, setFreeBlocks] = useState<FreeBlockItem[]>([
   },
 ]);
 const saveAsWord = async () => {
-  const element = document.getElementById("print-area");
+  const printArea = document.getElementById("print-area");
 
-  if (!element) {
+  if (!printArea) {
     alert("저장할 플래너 영역을 찾을 수 없습니다.");
     return;
   }
 
+  const pages = Array.from(
+    printArea.querySelectorAll<HTMLElement>(".planner-page")
+  );
+
+  if (pages.length === 0) {
+    alert("저장할 플래너 페이지를 찾을 수 없습니다.");
+    return;
+  }
+
   try {
-const canvas = await html2canvas(element, {
-  scale: 3,
-  backgroundColor: "#ffffff",
-  useCORS: true,
-  height: element.scrollHeight + 4,
-  windowHeight: element.scrollHeight + 4,
-  ignoreElements: (el) =>
-    el.classList.contains("no-print"),
-  onclone: (clonedDocument) => {
-    const clonedArea =
-      clonedDocument.getElementById("print-area");
-
-    if (clonedArea) {
-      clonedArea.style.backgroundColor = "#ffffff";
-      clonedArea.style.boxShadow = "none";
-    }
-    clonedDocument
-  .querySelectorAll(".no-print, [contenteditable='true'], textarea")
-  .forEach((el) => {
-    (el as HTMLElement).style.display = "none";
-  });
-
-clonedDocument
-  .querySelectorAll(".planner-page, .planner-canvas")
-  .forEach((el) => {
-    const node = el as HTMLElement;
-    node.style.backgroundColor = "#ffffff";
-  });
-  },
-});
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => {
-        if (result) {
-          resolve(result);
-        } else {
-          reject(new Error("이미지 변환에 실패했습니다."));
-        }
-      }, "image/png");
-    });
-
-    const imageData = await blob.arrayBuffer();
-
 const wordSizeMap = {
   A4: {
     pageWidth: 11906,
     pageHeight: 16838,
-    imageWidth: 760,
+    imageWidth: 794,
+    imageHeight: 1123,
   },
   A5: {
     pageWidth: 8391,
     pageHeight: 11906,
-    imageWidth: 537,
+    imageWidth: 559,
+    imageHeight: 794,
   },
   B5: {
     pageWidth: 9979,
     pageHeight: 14173,
-    imageWidth: 637,
+    imageWidth: 665,
+    imageHeight: 945,
   },
 } as const;
 
-const selectedWordSize = wordSizeMap[wordPageSize];
+    const selectedWordSize =
+      wordSizeMap[wordPageSize];
 
-const maxWidth = selectedWordSize.imageWidth;
+    const maxWidth =
+      selectedWordSize.imageWidth;
 
-const imageHeight =
-  (canvas.height / canvas.width) * maxWidth;
-const doc = new Document({
-  sections: [
-    {
-      properties: {
-        page: {
-          size: {
-            width: selectedWordSize.pageWidth,
-            height: selectedWordSize.pageHeight,
-          },
-          margin: {
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
+    const sections = [];
+
+    for (const page of pages) {
+      const canvas = await html2canvas(page, {
+        scale: 3,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+
+        ignoreElements: (el) =>
+          el.classList.contains("no-print"),
+
+        onclone: (clonedDocument) => {
+          clonedDocument
+            .querySelectorAll(
+              ".no-print, [contenteditable='true'], textarea"
+            )
+            .forEach((el) => {
+              (el as HTMLElement).style.display =
+                "none";
+            });
+
+          clonedDocument
+            .querySelectorAll(
+              ".planner-page, .planner-canvas"
+            )
+            .forEach((el) => {
+              const node = el as HTMLElement;
+
+              node.style.backgroundColor =
+                "#ffffff";
+              node.style.boxShadow = "none";
+            });
+        },
+      });
+
+      const blob = await new Promise<Blob>(
+        (resolve, reject) => {
+          canvas.toBlob((result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(
+                new Error(
+                  "이미지 변환에 실패했습니다."
+                )
+              );
+            }
+          }, "image/png");
+        }
+      );
+
+      const imageData =
+        await blob.arrayBuffer();
+
+      sections.push({
+        properties: {
+          page: {
+            size: {
+              width:
+                selectedWordSize.pageWidth,
+              height:
+                selectedWordSize.pageHeight,
+            },
+
+            margin: {
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+            },
           },
         },
-      },
 
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: {
-            before: 0,
-            after: 0,
-          },
-          children: [
-            new ImageRun({
-              type: "png",
-              data: imageData,
-              transformation: {
-                width: maxWidth,
-                height: imageHeight,
-              },
-            }),
-          ],
-        }),
-      ],
-    },
-  ],
-});
-    const docxBlob = await Packer.toBlob(doc);
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
 
-    const url = URL.createObjectURL(docxBlob);
-    const link = document.createElement("a");
+            spacing: {
+              before: 0,
+              after: 0,
+            },
+
+            children: [
+              new ImageRun({
+                type: "png",
+                data: imageData,
+
+                transformation: {
+                  width: selectedWordSize.imageWidth,
+                  height: selectedWordSize.imageHeight,
+                },
+              }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    const doc = new Document({
+      sections,
+    });
+
+    const docxBlob =
+      await Packer.toBlob(doc);
+
+    const url =
+      URL.createObjectURL(docxBlob);
+
+    const link =
+      document.createElement("a");
 
     link.href = url;
-    link.download = `diary-planner-${wordPageSize}.docx`;
+
+    link.download =
+      `diary-planner-${wordPageSize}.docx`;
+
     link.click();
 
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error(error);
-    alert("Word 파일 저장 중 오류가 발생했습니다.");
+
+    alert(
+      "Word 파일 저장 중 오류가 발생했습니다."
+    );
   }
 };
-
 const [selectedFreeBlockId, setSelectedFreeBlockId] = useState("free-1");
+const [selectedWeeklyPage, setSelectedWeeklyPage] = useState<
+  "weekly-left" | "weekly-right"
+>("weekly-left");
 const addFreeBlock = () => {
   const newId = `free-${Date.now()}`;
   const index = freeBlocks.length;
@@ -577,9 +622,13 @@ const addFreeBlock = () => {
       y: 20 + Math.floor(index / 2) * 200,
       width: 240,
       height: 180,
+      pageKey:
+  plannerType === "위클리"
+    ? selectedWeeklyPage
+    : "daily",
     },
   ]);
-
+console.log("새 블록 페이지:", plannerType, selectedWeeklyPage);
   setSelectedFreeBlockId(newId);
 };
 const addScheduleBlock = () => {
@@ -602,6 +651,10 @@ const addScheduleBlock = () => {
       y: 20 + Math.floor(index / 2) * 260,
       width: 240,
       height: 320,
+      pageKey:
+  plannerType === "위클리"
+    ? selectedWeeklyPage
+    : "daily",
     },
   ]);
 
@@ -1806,84 +1859,363 @@ const deleteTemplate = (name: string) => {
       </div>
 
       <div className="h-full">
+        
   {renderBlockCanvas(blocks, "daily")}
 </div>
     </div>
   )}
 
-  {/* 위클리: 왼쪽 페이지 */}
-  {plannerType === "위클리" && (
-    <>
+{/* 위클리 */}
+{plannerType === "위클리" && (
+  <>
+    {/* 왼쪽 페이지 : 월 / 화 / 수 / 목 */}
+    <div
+      className="planner-page relative shrink-0"
+      onPointerDown={() => setSelectedWeeklyPage("weekly-left")}
+      style={{
+        width: currentPageSize.width,
+        height: currentPageSize.height,
+        padding: marginOptions.normal.padding,
+        paddingTop: 8,
+        backgroundColor: theme.page,
+      }}
+    >
       <div
-        className="planner-page shrink-0 rounded-3xl "
-        style={{
-          width: currentPageSize.width,
-          height: currentPageSize.height,
-          padding: marginOptions.normal.padding,
-          paddingTop: 8,
-          backgroundColor: theme.page,
-        }}
-      >
+  className="mb-3 flex h-10 items-center justify-between pb-2"
+  style={{ borderColor: theme.line }}
+>
         <div
-          className="mb-3 flex items-center justify-between border-b pb-2"
-          style={{ borderColor: theme.line }}
-        >
-          <div
-            className="font-black"
-            style={{ color: theme.accent }}
-          >
-            WEEKLY · 1
-          </div>
-
-          <div className="text-xs text-neutral-400">
-            ____ . ____ ~ ____ . ____
-          </div>
-        </div>
-
-        <div style={{ height: "calc(100% - 45px)" }}>
-          {renderBlockCanvas(
-            weeklyLeftBlocks,
-            "weekly-left"
-          )}
-        </div>
+  className="flex items-center gap-2 font-black"
+  style={{ color: theme.accent }}
+>
+  <CalendarDays className="h-5 w-5" />
+  <span>주간계획</span>
+</div>
       </div>
 
-      {/* 위클리: 오른쪽 페이지 */}
       <div
-        className="planner-page shrink-0 rounded-3xl "
+        className="relative grid overflow-hidden"
         style={{
-          width: currentPageSize.width,
-          height: currentPageSize.height,
-          padding: marginOptions.normal.padding,
-          paddingTop: 8,
-          backgroundColor: theme.page,
+  height: "calc(100% - 70px)",
+  gridTemplateRows: "repeat(4, 1fr)",
+  marginTop: 12,
+  marginBottom: 12,
+}}
+      >
+        {[
+          ["MON", "월"],
+          ["TUE", "화"],
+          ["WED", "수"],
+          ["THU", "목"],
+        ].map(([day, korean], index) => (
+          <div
+            key={day}
+            className="relative px-3 py-3"
+            style={{
+              borderTop:
+      index === 0
+        ? `1px solid ${theme.line}`
+        : "none",
+              borderBottom: `1px solid ${theme.line}`,
+            }}
+          >
+            <div
+  className="flex items-center gap-2 text-sm font-semibold"
+  style={{ color: theme.accent }}
+>
+  <span>{korean}</span>
+
+  <span>/</span>
+
+  <span className="inline-block w-16">
+    &nbsp;
+  </span>
+
+</div>
+          </div>
+          
+        ))}
+      </div>
+      <div className="absolute inset-0 pointer-events-none">
+  {freeBlocks
+    .filter((freeBlock) => freeBlock.pageKey === "weekly-left")
+    .map((freeBlock) => (
+      <motion.div
+        key={`weekly-left-${freeBlock.id}`}
+        className="pointer-events-auto absolute cursor-grab active:cursor-grabbing"
+        drag
+        dragMomentum={false}
+        dragElastic={0}
+        initial={false}
+        animate={{
+          x: freeBlock.x,
+          y: freeBlock.y,
+        }}
+        style={{
+          width: freeBlock.width,
+          height: freeBlock.height,
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          setSelectedWeeklyPage("weekly-left");
+          setSelectedSchedule(false);
+          setSelectedFreeBlockId(freeBlock.id);
+        }}
+        onDragEnd={(_, info) => {
+          const gridSize = 30;
+
+          const nextX =
+            Math.round(
+              (freeBlock.x + info.offset.x) / gridSize
+            ) * gridSize;
+
+          const nextY =
+            Math.round(
+              (freeBlock.y + info.offset.y) / gridSize
+            ) * gridSize;
+
+          setFreeBlocks((previous) =>
+            previous.map((block) =>
+              block.id === freeBlock.id
+                ? { ...block, x: nextX, y: nextY }
+                : block
+            )
+          );
         }}
       >
-        <div
-          className="mb-0 flex items-center justify-between border-b pb-0"
-          style={{ borderColor: theme.line }}
-        >
+        {selectedFreeBlockId === freeBlock.id && (
+          <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
+        )}
+
+        {freeBlock.type === "schedule" ? (
+          <div className="h-full rounded-2xl bg-white p-4">
+            <div
+              className="mb-3 font-bold"
+              style={{
+                fontSize: `${freeBlock.titleSize}px`,
+                textAlign: freeBlock.titleAlign,
+              }}
+            >
+              {freeBlock.title}
+            </div>
+
+            <HalfHourScheduleRows
+              startTime={freeBlock.scheduleStart ?? "08:00"}
+              layout={freeBlock}
+              timeInterval={freeBlock.scheduleInterval ?? 30}
+            />
+          </div>
+        ) : (
+          <FreeBlock
+            title={freeBlock.title}
+            rowCount={freeBlock.rowCount}
+            showCheckbox={freeBlock.showCheckbox}
+            titleAlign={freeBlock.titleAlign}
+            titleSize={freeBlock.titleSize}
+            lineColor={theme.line}
+          />
+        )}
+
+        <FreeBlockResizeHandle
+          freeBlock={freeBlock}
+          theme={theme}
+          onResize={(id, width, height) => {
+            setFreeBlocks((previous) =>
+              previous.map((block) =>
+                block.id === id
+                  ? { ...block, width, height }
+                  : block
+              )
+            );
+          }}
+        />
+      </motion.div>
+    ))}
+</div>
+    </div>
+    
+
+{/* 오른쪽 페이지 : 금 / 토 / 일 / 위클리 메모 */}
+<div
+  className="planner-page relative shrink-0"
+  onPointerDown={() => setSelectedWeeklyPage("weekly-right")}
+  style={{
+    width: currentPageSize.width,
+    height: currentPageSize.height,
+    padding: marginOptions.normal.padding,
+    paddingTop: 8,
+    backgroundColor: theme.page,
+  }}
+>
+  {/* 상단 여백 */}
+  <div
+    className="mb-3 flex h-10 items-center justify-between pb-2"
+    style={{ borderColor: theme.line }}
+  >
+  </div>
+
+  {/* 금 / 토 / 일 / 위클리 메모 */}
+  <div
+    className="relative grid overflow-hidden"
+    style={{
+      height: "calc(100% - 70px)",
+      gridTemplateRows: "repeat(4, 1fr)",
+      marginTop: 12,
+      marginBottom: 12,
+    }}
+  >
+    {[
+      ["FRI", "금"],
+      ["SAT", "토"],
+      ["SUN", "일"],
+      ["MEMO", "WEEKLY MEMO"],
+    ].map(([day, korean], index) => (
+      <div
+        key={day}
+        className="relative px-3 py-3"
+        style={{
+          borderTop:
+            index === 0
+              ? `1px solid ${theme.line}`
+              : "none",
+          borderBottom: `1px solid ${theme.line}`,
+        }}
+      >
+        {day === "MEMO" ? (
           <div
-            className="font-black"
+            className="text-sm font-bold"
             style={{ color: theme.accent }}
           >
-            WEEKLY · 2
+            WEEKLY MEMO
           </div>
-
-          <div className="text-xs text-neutral-400">
-            ____ . ____ ~ ____ . ____
+        ) : (
+          <div
+            className="flex items-center gap-2 text-sm font-semibold"
+            style={{ color: theme.accent }}
+          >
+            <span>{korean}</span>
+            <span>/</span>
+            <span className="inline-block w-16">
+              &nbsp;
+            </span>
           </div>
-        </div>
-
-        <div style={{ height: "calc(100% - 45px)" }}>
-          {renderBlockCanvas(
-            weeklyRightBlocks,
-            "weekly-right"
-          )}
-        </div>
+        )}
       </div>
-    </>
-  )}
+    ))}
+  </div>
+
+  {/* 오른쪽 페이지 자유블럭 / 시간표 */}
+  <div className="absolute inset-0 pointer-events-none">
+    {freeBlocks
+    .filter((freeBlock) => freeBlock.pageKey === "weekly-right")
+    .map((freeBlock) => (
+      <motion.div
+        key={`weekly-right-${freeBlock.id}`}
+        className="pointer-events-auto absolute cursor-grab active:cursor-grabbing"
+        drag
+        dragMomentum={false}
+        dragElastic={0}
+        initial={false}
+        animate={{
+          x: freeBlock.x,
+          y: freeBlock.y,
+        }}
+        style={{
+          width: freeBlock.width,
+          height: freeBlock.height,
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          setSelectedWeeklyPage("weekly-right");
+          setSelectedSchedule(false);
+          setSelectedFreeBlockId(freeBlock.id);
+        }}
+        onDragEnd={(_, info) => {
+          const gridSize = 30;
+
+          const nextX =
+            Math.round(
+              (freeBlock.x + info.offset.x) / gridSize
+            ) * gridSize;
+
+          const nextY =
+            Math.round(
+              (freeBlock.y + info.offset.y) / gridSize
+            ) * gridSize;
+
+          setFreeBlocks((previous) =>
+            previous.map((block) =>
+              block.id === freeBlock.id
+                ? {
+                    ...block,
+                    x: nextX,
+                    y: nextY,
+                  }
+                : block
+            )
+          );
+        }}
+      >
+        {selectedFreeBlockId === freeBlock.id && (
+          <div className="no-print pointer-events-none absolute -inset-1 rounded-2xl border-2 border-neutral-900" />
+        )}
+
+        {freeBlock.type === "schedule" ? (
+          <div className="h-full rounded-2xl bg-white p-4">
+            <div
+              className="mb-3 font-bold"
+              style={{
+                fontSize: `${freeBlock.titleSize}px`,
+                textAlign: freeBlock.titleAlign,
+              }}
+            >
+              {freeBlock.title}
+            </div>
+
+            <HalfHourScheduleRows
+              startTime={
+                freeBlock.scheduleStart ?? "08:00"
+              }
+              layout={freeBlock}
+              timeInterval={
+                freeBlock.scheduleInterval ?? 30
+              }
+            />
+          </div>
+        ) : (
+          <FreeBlock
+            title={freeBlock.title}
+            rowCount={freeBlock.rowCount}
+            showCheckbox={freeBlock.showCheckbox}
+            titleAlign={freeBlock.titleAlign}
+            titleSize={freeBlock.titleSize}
+            lineColor={theme.line}
+          />
+        )}
+
+        <FreeBlockResizeHandle
+          freeBlock={freeBlock}
+          theme={theme}
+          onResize={(id, width, height) => {
+            setFreeBlocks((previous) =>
+              previous.map((block) =>
+                block.id === id
+                  ? {
+                      ...block,
+                      width,
+                      height,
+                    }
+                  : block
+              )
+            );
+          }}
+        />
+      </motion.div>
+    ))}
+  </div>
+</div>
+</>
+)}
 
   {/* 먼슬리: 왼쪽 페이지 */}
   {plannerType === "먼슬리" && (
