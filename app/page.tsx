@@ -538,10 +538,10 @@ const wordSizeMap = {
             },
 
             margin: {
-              top: 0,
+              top: 567,
               right: 0,
               bottom: 0,
-              left: 0,
+              left: 480,
             },
           },
         },
@@ -561,8 +561,8 @@ const wordSizeMap = {
                 data: imageData,
 
                 transformation: {
-                  width: selectedWordSize.imageWidth,
-                  height: selectedWordSize.imageHeight,
+                  width: selectedWordSize.imageWidth * 0.943,
+                  height: selectedWordSize.imageHeight * 0.943,
                 },
               }),
             ],
@@ -2217,162 +2217,177 @@ const deleteTemplate = (name: string) => {
 </>
 )}
 
-  {/* 먼슬리: 왼쪽 페이지 */}
-  {plannerType === "먼슬리" && (
-    <>
+{/* 먼슬리 */}
+{plannerType === "먼슬리" && (
+  <>
+    {/* 왼쪽 페이지 : 월 / 화 / 수 */}
+    <div
+      className="planner-page shrink-0"
+      style={{
+        width: currentPageSize.width,
+        height: currentPageSize.height,
+        padding: marginOptions.normal.padding,
+        paddingTop: 8,
+        backgroundColor: theme.page,
+        boxSizing: "border-box",
+      }}
+    >
+      {/* 상단 */}
       <div
-        className="planner-page shrink-0 rounded-3xl "
-        style={{
-  width: currentPageSize.width,
-  height: currentPageSize.height,
-  padding: marginOptions.normal.padding,
-  paddingTop: 8,
-  backgroundColor: theme.page,
-  boxSizing: "border-box",
-}}
+        className="mb-3 flex h-10 items-center justify-between pb-2"
+        style={{ borderColor: theme.line }}
       >
         <div
-          className="mb-0 flex items-start justify-between border-b pb-0"
-          style={{ borderColor: theme.line }}
-        >
-          <div
-            className="font-black"
-            style={{ color: theme.accent }}
-          >
-            MONTHLY · 1
-          </div>
-
-          <div
-            className="rounded-xl border px-3 py-2"
-            style={{
-              borderColor: theme.line,
-              backgroundColor: theme.block,
-            }}
-          >
-            <div className="mb-1 text-center text-[10px] font-semibold">
-              MONTH
-            </div>
-
-            <div className="grid grid-cols-6 gap-1 text-center text-[10px]">
-              {Array.from({ length: 12 }).map((_, index) => (
-                <span
-                  key={index}
-                  className="rounded border px-1"
-                  style={{ borderColor: theme.line }}
-                >
-                  {index + 1}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-2 grid w-full grid-cols-3 gap-1 text-center text-xs font-bold">
-          {["SUN", "MON", "TUE", "WED"].map((day) => (
-            <div
-              key={day}
-              className="py-2"
-              style={{ color: theme.accent }}
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-
-        <div
-  className="grid w-full min-w-0 grid-cols-3 gap-1"
-  style={{ height: "calc(100% - 105px)" }}
+  className="flex items-center gap-2 font-black"
+  style={{
+    color: theme.accent,
+    fontSize: "21px",
+  }}
 >
-          {Array.from({ length: 20 }).map((_, index) => (
-            <div
-              key={index}
-              className="rounded-lg border"
-              style={{
-                borderColor: theme.line,
-                backgroundColor: theme.block,
-              }}
-            />
-          ))}
-        </div>
+  <CalendarDays className="h-7 w-7" />
+  <span>월간계획</span>
+</div>
       </div>
 
-      {/* 먼슬리: 오른쪽 페이지 */}
+      {/* 요일 */}
       <div
-        className="planner-page shrink-0 overflow-hidden rounded-3xl "
+        className="grid w-full grid-cols-3 text-center text-[14px] font-normal"
         style={{
-          width: currentPageSize.width,
-          height: currentPageSize.height,
-          padding: marginOptions.normal.padding,
-          backgroundColor: theme.page,
-          boxSizing: "border-box",
+          borderTop: `1px solid ${theme.line}`,
+          borderBottom: `1px solid ${theme.line}`,
         }}
       >
-        <div
-          className="mb-0 flex items-start justify-between border-b pb-0"
-          style={{ borderColor: theme.line }}
-        >
-          <div
-            className="font-black"
-            style={{ color: theme.accent }}
-          >
-            MONTHLY · 2
-          </div>
+        {[
+  ["MON", "월"],
+  ["TUE", "화"],
+  ["WED", "수"],
+].map(([day, korean], index) => (
+  <div
+    key={day}
+    className="py-2"
+    style={{
+      color: theme.accent,
+      borderLeft:
+        index === 0
+          ? `1px solid ${theme.line}`
+          : "none",
+      borderRight: `1px solid ${theme.line}`,
+    }}
+  >
+    {korean} / {day}
+  </div>
+))}
+      </div>
 
+      {/* 5주 × 3일 = 15칸 */}
+      <div
+        className="grid w-full grid-cols-3"
+        style={{
+          height: "calc(100% - 95px)",
+          gridTemplateRows: "repeat(5, 1fr)",
+          borderLeft: `1px solid ${theme.line}`,
+        }}
+      >
+        {Array.from({ length: 15 }).map((_, index) => (
           <div
-            className="rounded-xl border px-3 py-2"
+            key={index}
+            className="min-w-0 border-b border-r p-2"
             style={{
               borderColor: theme.line,
               backgroundColor: theme.block,
             }}
-          >
-            <div className="mb-1 text-center text-[10px] font-semibold">
-              MONTH
-            </div>
-            
-            <div className="grid grid-cols-6 gap-1 text-center text-[10px]">
-              {Array.from({ length: 12 }).map((_, index) => (
-                <span
-                  key={index}
-                  className="rounded border px-1"
-                  style={{ borderColor: theme.line }}
-                >
-                  {index + 1}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-         <div className="mb-2 grid w-full grid-cols-3 gap-1 text-center text-xs font-bold">
-    {["THU", "FRI", "SAT"].map((day) => (
-      <div
-        key={day}
-        className="min-w-0 py-2"
-        style={{ color: theme.accent }}
-      >
-        {day}
+          />
+        ))}
       </div>
-    ))}
-  </div>
+    </div>
 
-  <div
-    className="grid w-full min-w-0 grid-cols-3 gap-1"
-    style={{ height: "calc(100% - 105px)" }}
-  >
-    {Array.from({ length: 15 }).map((_, index) => (
+    {/* 오른쪽 페이지 : 목 / 금 / 토 / 일 */}
+    <div
+      className="planner-page shrink-0"
+      style={{
+        width: currentPageSize.width,
+        height: currentPageSize.height,
+        padding: marginOptions.normal.padding,
+        paddingTop: 8,
+        backgroundColor: theme.page,
+        boxSizing: "border-box",
+      }}
+    >
+      {/* 상단 */}
       <div
-        key={index}
-        className="min-w-0 rounded-lg border"
+        className="mb-3 flex h-10 items-center justify-end pb-2"
+        style={{ borderColor: theme.line }}
+      >
+        <div className="flex items-center gap-2 text-[17px] font-semibold">
+  {Array.from({ length: 12 }).map((_, index) => (
+    <span
+      key={index}
+      style={{ color: theme.accent }}
+    >
+      {index + 1}
+    </span>
+  ))}
+</div>
+      </div>
+
+      {/* 요일 */}
+<div
+  className="grid w-full text-center text-[14px] font-normal"
+  style={{
+    gridTemplateColumns: "1fr 1fr 0.5fr 0.5fr",
+    borderTop: `1px solid ${theme.line}`,
+    borderBottom: `1px solid ${theme.line}`,
+  }}
+>
+  {[
+    ["THU", "목"],
+    ["FRI", "금"],
+    ["SAT", "토"],
+    ["SUN", "일"],
+  ].map(([day, korean], index) => (
+    <div
+      key={day}
+      className="py-2"
+      style={{
+        color: theme.accent,
+        borderLeft:
+          index === 0
+            ? `1px solid ${theme.line}`
+            : "none",
+        borderRight: `1px solid ${theme.line}`,
+      }}
+    >
+      {korean} / {day}
+    </div>
+  ))}
+</div>
+
+      {/* 5주 × 4일 = 20칸 */}
+      <div
+        className="grid w-full"
         style={{
-          borderColor: theme.line,
-          backgroundColor: theme.block,
+          height: "calc(100% - 95px)",
+          gridTemplateColumns: "1fr 1fr 0.5fr 0.5fr",
+          gridTemplateRows: "repeat(5, 1fr)",
+          borderLeft: `1px solid ${theme.line}`,
         }}
-      />
-    ))}
-  </div>
-</div>    </>
-  )}
-  </div>
+      >
+        {Array.from({ length: 20 }).map((_, index) => (
+          <div
+            key={index}
+            className="min-w-0 border-b border-r p-2"
+            style={{
+              borderColor: theme.line,
+              backgroundColor: theme.block,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  </>
+)}
+
+</div>
 
 </CardContent>          
 </Card>
