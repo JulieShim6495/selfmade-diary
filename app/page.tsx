@@ -1886,9 +1886,12 @@ const deleteTemplate = (name: string) => {
 >
         <div
   className="flex items-center gap-2 font-black"
-  style={{ color: theme.accent }}
+  style={{
+    color: theme.accent,
+    fontSize: "21px",
+  }}
 >
-  <CalendarDays className="h-5 w-5" />
+  <CalendarDays className="h-7 w-7" />
   <span>주간계획</span>
 </div>
       </div>
