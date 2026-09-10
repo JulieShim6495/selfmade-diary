@@ -505,6 +505,51 @@ const wordSizeMap = {
                 "#ffffff";
               node.style.boxShadow = "none";
             });
+            if (gridBackground === "dot") {
+  clonedDocument
+    .querySelectorAll(".planner-canvas")
+    .forEach((el) => {
+      const canvas = el as HTMLElement;
+
+      // 기존 gradient 점 배경은 제거
+      canvas.style.backgroundImage = "none";
+
+      const dotLayer =
+        clonedDocument.createElement("div");
+
+      dotLayer.style.position = "absolute";
+      dotLayer.style.inset = "0";
+      dotLayer.style.pointerEvents = "none";
+      dotLayer.style.zIndex = "0";
+
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+
+      for (let y = 0; y < height; y += 20) {
+        for (let x = 0; x < width; x += 20) {
+          const dot =
+            clonedDocument.createElement("div");
+
+          dot.style.position = "absolute";
+          dot.style.left = `${x}px`;
+          dot.style.top = `${y}px`;
+
+          dot.style.width = "2px";
+          dot.style.height = "2px";
+
+          dot.style.backgroundColor = "#c8c8c8";
+          dot.style.borderRadius = "50%";
+
+          dotLayer.appendChild(dot);
+        }
+      }
+
+      canvas.insertBefore(
+        dotLayer,
+        canvas.firstChild
+      );
+    });
+}
         },
       });
 
@@ -561,8 +606,8 @@ const wordSizeMap = {
                 data: imageData,
 
                 transformation: {
-                  width: selectedWordSize.imageWidth * 0.943,
-                  height: selectedWordSize.imageHeight * 0.943,
+                  width: selectedWordSize.imageWidth * 0.90,
+                  height: selectedWordSize.imageHeight * 0.90,
                 },
               }),
             ],
@@ -1852,14 +1897,17 @@ const deleteTemplate = (name: string) => {
             DATE
           </div>
 
-          <div className="mt-1 text-xs">
-            ____ . ____ . ____
-          </div>
+          <div className="mt-1 text-sm">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</div>
         </div>
       </div>
 
-      <div className="h-full">
-        
+      <div
+  style={{
+    height: "calc(100% - 60px)",
+  }}
+>       
   {renderBlockCanvas(blocks, "daily")}
 </div>
     </div>
@@ -1923,7 +1971,7 @@ const deleteTemplate = (name: string) => {
             }}
           >
             <div
-  className="flex items-center gap-2 text-sm font-semibold"
+  className="flex items-center gap-2 text-xl font-semibold"
   style={{ color: theme.accent }}
 >
   <span>{korean}</span>
@@ -2086,14 +2134,14 @@ const deleteTemplate = (name: string) => {
       >
         {day === "MEMO" ? (
           <div
-            className="text-sm font-bold"
+            className="text-xl font-bold"
             style={{ color: theme.accent }}
           >
             WEEKLY MEMO
           </div>
         ) : (
           <div
-            className="flex items-center gap-2 text-sm font-semibold"
+            className="flex items-center gap-2 text-xl font-semibold"
             style={{ color: theme.accent }}
           >
             <span>{korean}</span>
