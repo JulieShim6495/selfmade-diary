@@ -69,7 +69,7 @@ const themes: Record<ThemeKey, { label: string; page: string; block: string; acc
     block: "#ffffff",
     accent: "#111827",
     soft: "#f5f5f5",
-    line: "#e5e7eb",
+    line: "#d1d5db",
   },
   beige: {
     label: "베이지",
@@ -402,6 +402,9 @@ pageKey?: string;
 export default function DiaryMakerSite() {
   const pageSize = "A4";
   const [plannerType, setPlannerType] = useState("데일리");
+  const [dailyPunchSide, setDailyPunchSide] = useState<
+  "left" | "right"
+>("left");
   const [style, setStyle] = useState("미니멀");
   const [wordPageSize, setWordPageSize] = useState<
   "A4" | "A5" | "B5"
@@ -475,7 +478,7 @@ const wordSizeMap = {
 
     const sections = [];
 
-    for (const page of pages) {
+    for (const [pageIndex, page] of pages.entries()) {
       const canvas = await html2canvas(page, {
         scale: 3,
         backgroundColor: "#ffffff",
@@ -583,12 +586,25 @@ const wordSizeMap = {
             },
 
             margin: {
-              top: 567,
-              right: 0,
-              bottom: 0,
-              left: 480,
-            },
-          },
+  top: 567,
+  right:
+    plannerType === "데일리"
+      ? dailyPunchSide === "right"
+        ? 680
+        : 0
+      : pageIndex % 2 === 0
+      ? 680
+      : 0,
+  bottom: 0,
+  left:
+    plannerType === "데일리"
+      ? dailyPunchSide === "left"
+        ? 680
+        : 0
+      : pageIndex % 2 === 1
+      ? 680
+      : 0,
+},          },
         },
 
         children: [
@@ -1165,10 +1181,10 @@ backgroundImage:
       : undefined,
       backgroundPosition: "0 0",
 
-      borderRight:
-  gridBackground === "line"
-    ? "1px solid #e5e5e5"
-    : undefined,
+      borderRightWidth:
+  gridBackground === "line" ? "1px" : undefined,
+borderRightStyle:
+  gridBackground === "line" ? "solid" : undefined,
 }}
     >
        {pageBlocks.map((block) => {
@@ -1716,35 +1732,39 @@ const deleteTemplate = (name: string) => {
   </div>
 )}
 
+  <div className="mt-3 grid grid-cols-4 gap-2">
   <button
     type="button"
     onClick={addFreeBlock}
-    className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+    className="rounded-lg border bg-white px-1 py-2 text-xs font-semibold hover:bg-neutral-100"
   >
-    + 자유 블록 추가
+    + 자유블록
   </button>
+
   <button
-  type="button"
-  onClick={addScheduleBlock}
-  className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
->
-  + 시간표 추가
-</button>
+    type="button"
+    onClick={addScheduleBlock}
+    className="rounded-lg border bg-white px-1 py-2 text-xs font-semibold hover:bg-neutral-100"
+  >
+    + 시간표
+  </button>
+
   <button
     type="button"
     onClick={duplicateSelectedFreeBlock}
-    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm font-semibold"
+    className="rounded-lg border bg-white px-1 py-2 text-xs font-semibold hover:bg-neutral-100"
   >
-    선택한 자유 블록 복제
+    복제
   </button>
 
   <button
     type="button"
     onClick={deleteSelectedFreeBlock}
-    className="mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+    className="rounded-lg border bg-white px-1 py-2 text-xs font-semibold hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
   >
-    선택한 자유 블록 삭제
+    삭제
   </button>
+</div>
 
   <div className="mt-2 text-center text-xs text-neutral-500">
     자유 블록 수: {freeBlocks.length}
@@ -1847,6 +1867,39 @@ const deleteTemplate = (name: string) => {
     ))}
   </div>
 </div>
+{plannerType === "데일리" && (
+  <div className="mt-3 rounded-xl border bg-white p-3">
+    <div className="mb-2 text-sm font-semibold">
+      데일리 타공 방향
+    </div>
+
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        onClick={() => setDailyPunchSide("left")}
+        className={`rounded-lg border px-3 py-2 text-sm ${
+          dailyPunchSide === "left"
+            ? "border-neutral-900 bg-neutral-900 text-white"
+            : "bg-white"
+        }`}
+      >
+        왼쪽 타공
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setDailyPunchSide("right")}
+        className={`rounded-lg border px-3 py-2 text-sm ${
+          dailyPunchSide === "right"
+            ? "border-neutral-900 bg-neutral-900 text-white"
+            : "bg-white"
+        }`}
+      >
+        오른쪽 타공
+      </button>
+    </div>
+  </div>
+)}
                   <Button onClick={saveAsWord}>
   <Download className="h-4 w-4" />
   Word / 한글 저장

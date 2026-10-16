@@ -33,19 +33,11 @@ export default function FreeBlockSettings({
 }: FreeBlockSettingsProps) {
   return (
   <div className="rounded-2xl border bg-white p-4">
-    <h3 className="text-lg font-bold">
-      자유 블록 설정
-    </h3>
-
     {/* 제목 */}
     <div className="mt-5">
       <div className="mb-3 text-sm font-bold">
         📝 제목
       </div>
-
-      <label className="mb-2 block text-sm font-medium">
-        자유 블록 제목
-      </label>
 
       <input
         type="text"
@@ -64,7 +56,7 @@ export default function FreeBlockSettings({
 
       <div>
         <div className="mb-2 text-sm font-medium">
-          제목 정렬
+          정렬
         </div>
 
         <div className="flex gap-2">
@@ -141,13 +133,10 @@ export default function FreeBlockSettings({
     {/* 내용 */}
     <div className="mt-5 border-t pt-5">
       <div className="mb-3 text-sm font-bold">
-        📄 내용
+        📄 줄 수
       </div>
 
       <div>
-        <div className="mb-2 text-sm font-medium">
-          줄 수
-        </div>
       
         <div className="flex items-center gap-3">
           <button
