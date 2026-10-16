@@ -7,6 +7,7 @@ type FreeBlockProps = {
   lineColor: string;
   titleAlign: "left" | "center" | "right";
   titleSize: number;
+  rowSpacing?: number;
 };
 
 export default function FreeBlock({
@@ -16,6 +17,7 @@ export default function FreeBlock({
   lineColor,
   titleAlign,
   titleSize,
+  rowSpacing = 32,
 }: FreeBlockProps) 
 {
 return (
@@ -36,7 +38,10 @@ return (
         {title}
       </h3>
 
-      <div className="space-y-3">
+<div
+  className="flex flex-col"
+  style={{ gap: `${Math.max(0, rowSpacing - 20)}px` }}
+>
         {Array.from({ length: rowCount }).map((_, index) => (
           <div
             key={index}

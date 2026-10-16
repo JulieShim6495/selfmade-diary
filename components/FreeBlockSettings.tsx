@@ -15,6 +15,9 @@ type FreeBlockSettingsProps = {
   rowCount: number;
   onRowCountChange: (count: number) => void;
 
+  rowSpacing?: number;
+onRowSpacingChange?: (spacing: number) => void;
+
   showCheckbox: boolean;
 onShowCheckboxChange: (show: boolean) => void;
 };
@@ -28,7 +31,9 @@ export default function FreeBlockSettings({
   onTitleSizeChange,
   rowCount,
   onRowCountChange,
-   showCheckbox,
+  rowSpacing = 32,
+  onRowSpacingChange,
+  showCheckbox,
   onShowCheckboxChange,
 }: FreeBlockSettingsProps) {
   return (
@@ -164,6 +169,34 @@ export default function FreeBlockSettings({
           </button>
           
         </div>
+        {/* 줄 간격 */}
+<div className="mt-5">
+  <div className="mb-2 flex items-center justify-between">
+    <span className="text-sm font-medium">
+      줄 간격
+    </span>
+    <span className="text-sm font-semibold">
+      {rowSpacing}px
+    </span>
+  </div>
+
+  <input
+    type="range"
+    min={16}
+    max={40}
+    step={2}
+    value={rowSpacing}
+    onChange={(event) =>
+      onRowSpacingChange?.(Number(event.target.value))
+    }
+    className="w-full cursor-pointer accent-neutral-900"
+  />
+
+  <div className="mt-1 flex justify-between text-xs text-neutral-400">
+    <span>좁게</span>
+    <span>넓게</span>
+  </div>
+</div>
         <div className="mt-5">
   <label className="flex cursor-pointer items-center justify-between rounded-xl border p-3">
     <span className="text-sm font-medium">

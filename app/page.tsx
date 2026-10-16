@@ -69,7 +69,7 @@ const themes: Record<ThemeKey, { label: string; page: string; block: string; acc
     block: "#ffffff",
     accent: "#111827",
     soft: "#f5f5f5",
-    line: "#d1d5db",
+    line: "#9ca3af",
   },
   beige: {
     label: "베이지",
@@ -175,12 +175,14 @@ function HalfHourScheduleRows({
   startTime,
   layout,
   timeInterval,
+  rowSpacing = 30,
 }: {
   startTime: string;
   layout: BlockLayout;
   timeInterval: 15 | 30 | 60;
+  rowSpacing?: number;
 }) {
-  const rows: string[] = [];
+    const rows: string[] = [];
 
   const [hourText, minuteText] = startTime.split(":");
 
@@ -188,9 +190,9 @@ function HalfHourScheduleRows({
   let minute = Number(minuteText);
 
   const visibleRowCount = Math.max(
-    4,
-    Math.floor((layout.height - 55) / 24)
-  );
+  1,
+  Math.floor((layout.height - 55) / rowSpacing)
+);
 
   for (let i = 0; i < 96; i++) {
     rows.push(
@@ -214,10 +216,14 @@ function HalfHourScheduleRows({
       {rows.slice(0, visibleRowCount).map((time, index) => (
         <div
           key={`${time}-${index}`}
-          className="grid grid-cols-[56px_1fr] border-t py-1.5 text-xs"
-          style={{ borderColor: "rgba(0,0,0,0.08)" }}
+          className="grid grid-cols-[56px_1fr] items-center border-t text-xs"
+style={{
+  borderColor: "#9ca3af",
+  height: `${rowSpacing}px`,
+}}
+          
         >
-          <span className="text-neutral-400">{time}</span>
+          <span className="text-neutral-600">{time}</span>
         </div>
       ))}
     </div>
@@ -389,6 +395,7 @@ type FreeBlockItem = {
   showCheckbox: boolean;
   titleAlign: "left" | "center" | "right";
   titleSize: number;
+  rowSpacing?: number;
 
   x: number;
   y: number;
@@ -586,6 +593,7 @@ const wordSizeMap = {
             },
 
             margin: {
+
   top: 567,
   right:
     plannerType === "데일리"
@@ -1328,12 +1336,14 @@ style={{
   startTime={freeBlock.scheduleStart ?? "08:00"}
   layout={layout}
   timeInterval={freeBlock.scheduleInterval ?? 30}
+  rowSpacing={freeBlock.rowSpacing ?? 30}
 />
   </div>
 ) : (
   <FreeBlock
     title={freeBlock.title}
     rowCount={freeBlock.rowCount}
+    rowSpacing={freeBlock.rowSpacing ?? 32}
     showCheckbox={freeBlock.showCheckbox}
     titleAlign={freeBlock.titleAlign}
     titleSize={freeBlock.titleSize}
@@ -1659,6 +1669,16 @@ const deleteTemplate = (name: string) => {
         )
       )
     }
+    rowSpacing={selectedFreeBlock.rowSpacing ?? 32}
+onRowSpacingChange={(rowSpacing) =>
+  setFreeBlocks((previous) =>
+    previous.map((block) =>
+      block.id === selectedFreeBlockId
+        ? { ...block, rowSpacing }
+        : block
+    )
+  )
+}
     showCheckbox={selectedFreeBlock.showCheckbox}
     onShowCheckboxChange={(showCheckbox) =>
       setFreeBlocks((previous) =>
@@ -1729,6 +1749,42 @@ const deleteTemplate = (name: string) => {
         </button>
       ))}
     </div>
+    {/* 시간표 줄 간격 */}
+<div className="mt-5 border-t pt-4">
+  <div className="mb-2 flex items-center justify-between">
+    <span className="text-sm font-medium">
+      줄 간격
+    </span>
+    <span className="text-sm font-semibold">
+      {selectedFreeBlock.rowSpacing ?? 30}px
+    </span>
+  </div>
+
+  <input
+    type="range"
+    min={20}
+    max={40}
+    step={2}
+    value={selectedFreeBlock.rowSpacing ?? 30}
+    onChange={(e) => {
+      const rowSpacing = Number(e.target.value);
+
+      setFreeBlocks((previous) =>
+        previous.map((block) =>
+          block.id === selectedFreeBlockId
+            ? { ...block, rowSpacing }
+            : block
+        )
+      );
+    }}
+    className="w-full cursor-pointer accent-neutral-900"
+  />
+
+  <div className="mt-1 flex justify-between text-xs text-neutral-400">
+    <span>좁게</span>
+    <span>넓게</span>
+  </div>
+</div>
   </div>
 )}
 
@@ -2113,6 +2169,7 @@ const deleteTemplate = (name: string) => {
           <FreeBlock
             title={freeBlock.title}
             rowCount={freeBlock.rowCount}
+            rowSpacing={freeBlock.rowSpacing ?? 32}
             showCheckbox={freeBlock.showCheckbox}
             titleAlign={freeBlock.titleAlign}
             titleSize={freeBlock.titleSize}
